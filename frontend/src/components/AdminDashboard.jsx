@@ -87,10 +87,10 @@ const AdminDashboard = () => {
       setLoading(true);
       console.log('Fetching students from API...');
       
-      // Use dynamic API endpoint for mobile compatibility
-      const apiEndpoint = window.location.hostname === 'localhost' 
-        ? 'http://localhost:5000/api/admin/students'
-        : `${window.location.protocol}//${window.location.hostname}:5000/api/admin/students`;
+      // Use environment variable for API endpoint
+      const apiEndpoint = import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api/admin/students`
+        : 'http://localhost:5000/api/admin/students';
       
       console.log('Using API endpoint:', apiEndpoint);
       
@@ -234,10 +234,10 @@ const AdminDashboard = () => {
 
   const addTestData = async () => {
     try {
-      // Use dynamic API endpoint for mobile compatibility
-      const apiEndpoint = window.location.hostname === 'localhost' 
-        ? 'http://localhost:5000/api/admin/test-data'
-        : `${window.location.protocol}//${window.location.hostname}:5000/api/admin/test-data`;
+      // Use environment variable for API endpoint
+      const apiEndpoint = import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api/admin/test-data`
+        : 'http://localhost:5000/api/admin/test-data';
       
       console.log('Adding test data using endpoint:', apiEndpoint);
       
@@ -423,10 +423,10 @@ const AdminDashboard = () => {
     }
 
     try {
-      // Use dynamic API endpoint for mobile compatibility
-      const apiEndpoint = window.location.hostname === 'localhost' 
-        ? `http://localhost:5000/api/admin/students/${registerNo}`
-        : `${window.location.protocol}//${window.location.hostname}:5000/api/admin/students/${registerNo}`;
+      // Use environment variable for API endpoint
+      const apiEndpoint = import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api/admin/students/${registerNo}`
+        : 'http://localhost:5000/api/admin/students/${registerNo}';
       
       console.log('Deleting student using endpoint:', apiEndpoint);
       
