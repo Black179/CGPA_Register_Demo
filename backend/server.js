@@ -45,6 +45,15 @@ const db = new sqlite3.Database('./cgpa_calculator.db', (err) => {
   }
 });
 
+// Health Check Endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'CGPA Register Backend'
+  });
+});
+
 // Routes
 app.post('/api/user', (req, res) => {
   try {
