@@ -10,9 +10,5 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: MONGODB_URI
-        sync: false
-      - key: JWT_SECRET
-        sync: false
       - key: CORS_ORIGIN
-        value: https://your-vercel-app.vercel.app
+        value: https://cgpa-register-demo-5oeq.vercel.app
