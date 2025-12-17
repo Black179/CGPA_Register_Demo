@@ -48,6 +48,8 @@ const globalStyles = `
 const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('registerNo'); // New state for sorting
+  const [sortOrder, setSortOrder] = useState('asc'); // New state for sort order
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -172,7 +174,7 @@ const AdminDashboard = () => {
 
   // Function to process student data for semester-wise display
   const getStudentSemesterData = () => {
-    const studentData = [];
+    let studentData = [];
     const maxSemesters = getMaxSemesters();
     
     students.filter(student => student !== null).forEach((student, index) => {
@@ -229,7 +231,37 @@ const AdminDashboard = () => {
       });
     });
     
+    // Sort student data by register number
+    studentData.sort((a, b) => {
+      const regA = a.registerNo.toString();
+      const regB = b.registerNo.toString();
+      
+      if (sortBy === 'registerNo') {
+        if (sortOrder === 'asc') {
+          return regA.localeCompare(regB, undefined, { numeric: true });
+        } else {
+          return regB.localeCompare(regA, undefined, { numeric: true });
+        }
+      }
+      return 0;
+    });
+    
+    // Update serial numbers after sorting
+    studentData.forEach((student, index) => {
+      student.sno = index + 1;
+    });
+    
     return studentData;
+  };
+
+  // Function to handle sorting
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
   };
 
   const addTestData = async () => {
@@ -581,11 +613,39 @@ const AdminDashboard = () => {
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
                   }}>SECTION</Th>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="100px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>REG NO</Th>
+                  <Th 
+                    rowSpan={2} 
+                    textAlign="center" 
+                    p={2} 
+                    fontSize="xs" 
+                    width="100px" 
+                    style={{ 
+                      border: '2px solid #2D3748',
+                      backgroundColor: sortBy === 'registerNo' ? '#E2E8F0' : '#EDF2F7',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onClick={() => handleSort('registerNo')}
+                    onMouseEnter={(e) => {
+                      if (sortBy !== 'registerNo') {
+                        e.target.style.backgroundColor = '#E2E8F0';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortBy !== 'registerNo') {
+                        e.target.style.backgroundColor = '#EDF2F7';
+                      }
+                    }}
+                  >
+                    REG NO 
+                    {sortBy === 'registerNo' && (
+                      <span style={{ marginLeft: '5px' }}>
+                        {sortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </Th>
                   <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="150px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
