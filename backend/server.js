@@ -59,52 +59,133 @@ app.post('/api/user', (req, res) => {
   try {
     const userData = req.body;
     
-    // Insert student data
-    db.run(`INSERT INTO students (name, registerNo, section, totalSemesters) VALUES (?, ?, ?, ?)`,
-      [userData.name, userData.registerNo, userData.section, userData.totalSemesters],
-      function(err) {
-        if (err) {
-          console.error('Error inserting student:', err.message);
-          return res.status(500).json({ error: 'Failed to save student data' });
-        }
-        
-        const studentId = this.lastID;
-        
-        // Insert semester data
-        if (userData.semesters && userData.semesters.length > 0) {
-          userData.semesters.forEach((semester, index) => {
-            db.run(`INSERT INTO semesters (studentId, semesterNo, sgpa) VALUES (?, ?, ?)`,
-              [studentId, semester.semesterNo, semester.sgpa],
-              function(err) {
+    // Check if student already exists
+    db.get(`SELECT * FROM students WHERE registerNo = ?`, [userData.registerNo], (err, existingStudent) => {
+      if (err) {
+        console.error('Error checking existing student:', err.message);
+        return res.status(500).json({ error: 'Failed to check student data' });
+      }
+      
+      if (existingStudent) {
+        // Update existing student
+        db.run(`UPDATE students SET name = ?, section = ?, totalSemesters = ? WHERE registerNo = ?`,
+          [userData.name, userData.section, userData.totalSemesters, userData.registerNo],
+          function(err) {
+            if (err) {
+              console.error('Error updating student:', err.message);
+              return res.status(500).json({ error: 'Failed to update student data' });
+            }
+            
+            const studentId = existingStudent.id;
+            
+            // Delete existing semesters and subjects for this student
+            db.run(`DELETE FROM subjects WHERE semesterId IN (SELECT id FROM semesters WHERE studentId = ?)`, [studentId], (err) => {
+              if (err) {
+                console.error('Error deleting existing subjects:', err.message);
+                return res.status(500).json({ error: 'Failed to update student data' });
+              }
+              
+              db.run(`DELETE FROM semesters WHERE studentId = ?`, [studentId], (err) => {
                 if (err) {
-                  console.error('Error inserting semester:', err.message);
-                  return;
+                  console.error('Error deleting existing semesters:', err.message);
+                  return res.status(500).json({ error: 'Failed to update student data' });
                 }
                 
-                const semesterId = this.lastID;
-                
-                // Insert subject data
-                if (semester.subjects && semester.subjects.length > 0) {
-                  semester.subjects.forEach(subject => {
-                    db.run(`INSERT INTO subjects (semesterId, code, name, credits, grade, gradePoint) VALUES (?, ?, ?, ?, ?, ?)`,
-                      [semesterId, subject.code, subject.name, subject.credits, subject.grade, subject.gradePoint],
-                      (err) => {
+                // Insert new semester data
+                if (userData.semesters && userData.semesters.length > 0) {
+                  let completedSemesters = 0;
+                  const totalSemesters = userData.semesters.length;
+                  
+                  userData.semesters.forEach((semester, index) => {
+                    db.run(`INSERT INTO semesters (studentId, semesterNo, sgpa) VALUES (?, ?, ?)`,
+                      [studentId, semester.semesterNo, semester.sgpa],
+                      function(err) {
                         if (err) {
-                          console.error('Error inserting subject:', err.message);
+                          console.error('Error inserting semester:', err.message);
+                          return;
+                        }
+                        
+                        const semesterId = this.lastID;
+                        
+                        // Insert subject data
+                        if (semester.subjects && semester.subjects.length > 0) {
+                          semester.subjects.forEach(subject => {
+                            db.run(`INSERT INTO subjects (semesterId, code, name, credits, grade, gradePoint) VALUES (?, ?, ?, ?, ?, ?)`,
+                              [semesterId, subject.code, subject.name, subject.credits, subject.grade, subject.gradePoint],
+                              (err) => {
+                                if (err) {
+                                  console.error('Error inserting subject:', err.message);
+                                }
+                              }
+                            );
+                          });
+                        }
+                        
+                        completedSemesters++;
+                        if (completedSemesters === totalSemesters) {
+                          console.log('Student data updated:', userData);
+                          res.status(200).json({ message: 'Student data updated successfully', data: { ...userData, id: studentId } });
                         }
                       }
                     );
                   });
+                } else {
+                  console.log('Student data updated:', userData);
+                  res.status(200).json({ message: 'Student data updated successfully', data: { ...userData, id: studentId } });
                 }
-              }
-            );
-          });
-        }
-        
-        console.log('Student data saved:', userData);
-        res.status(201).json({ message: 'Student data saved successfully', data: { ...userData, id: studentId } });
+              });
+            });
+          }
+        );
+      } else {
+        // Insert new student data
+        db.run(`INSERT INTO students (name, registerNo, section, totalSemesters) VALUES (?, ?, ?, ?)`,
+          [userData.name, userData.registerNo, userData.section, userData.totalSemesters],
+          function(err) {
+            if (err) {
+              console.error('Error inserting student:', err.message);
+              return res.status(500).json({ error: 'Failed to save student data' });
+            }
+            
+            const studentId = this.lastID;
+            
+            // Insert semester data
+            if (userData.semesters && userData.semesters.length > 0) {
+              userData.semesters.forEach((semester, index) => {
+                db.run(`INSERT INTO semesters (studentId, semesterNo, sgpa) VALUES (?, ?, ?)`,
+                  [studentId, semester.semesterNo, semester.sgpa],
+                  function(err) {
+                    if (err) {
+                      console.error('Error inserting semester:', err.message);
+                      return;
+                    }
+                    
+                    const semesterId = this.lastID;
+                    
+                    // Insert subject data
+                    if (semester.subjects && semester.subjects.length > 0) {
+                      semester.subjects.forEach(subject => {
+                        db.run(`INSERT INTO subjects (semesterId, code, name, credits, grade, gradePoint) VALUES (?, ?, ?, ?, ?, ?)`,
+                          [semesterId, subject.code, subject.name, subject.credits, subject.grade, subject.gradePoint],
+                          (err) => {
+                            if (err) {
+                              console.error('Error inserting subject:', err.message);
+                            }
+                          }
+                        );
+                      });
+                    }
+                  }
+                );
+              });
+            }
+            
+            console.log('Student data saved:', userData);
+            res.status(201).json({ message: 'Student data saved successfully', data: { ...userData, id: studentId } });
+          }
+        );
       }
-    );
+    });
   } catch (error) {
     console.error('Error saving user data:', error);
     res.status(500).json({ error: 'Failed to save user data' });
