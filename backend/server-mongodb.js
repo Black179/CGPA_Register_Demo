@@ -8,7 +8,14 @@ const Student = require('./models/Student');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173', // Local development
+    process.env.CORS_ORIGIN || 'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
+    'https://cgpa-register-demo.vercel.app' // Alternative Vercel URL
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // MongoDB Connection

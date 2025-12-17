@@ -3,7 +3,7 @@ services:
     name: cgpa-register-backend
     env: node
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run start-mongo
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -12,3 +12,5 @@ services:
         value: 10000
       - key: CORS_ORIGIN
         value: https://cgpa-register-demo-5oeq.vercel.app
+      - key: MONGODB_URI
+        value: mongodb+srv://babutmuthumari_db_user:lgAaFavmi8vQB4ji@cluster0.6vhgf3m.mongodb.net/?appName=Cluster0
