@@ -9,14 +9,59 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: [
-    'http://localhost:5173', // Local development
-    'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
-    'https://cgpa-register-demo.onrender.com' // Backend URL for testing
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allowed origins
+    const allowedOrigins = [
+      'http://localhost:5173', // Local development
+      'http://localhost:3000', // Alternative local development
+      'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
+      'https://cgpa-register-demo.onrender.com', // Backend URL for testing
+      // Allow any subdomain of vercel.app for mobile compatibility
+      /^https:\/\/.*\.vercel\.app$/
+    ];
+    
+    if (allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    })) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
-app.use(express.json());
+
+// Mobile-friendly middleware
+app.use((req, res, next) => {
+  // Log mobile requests for debugging
+  const userAgent = req.headers['user-agent'] || '';
+  const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  
+  if (isMobile) {
+    console.log(`Mobile request: ${req.method} ${req.path} from ${userAgent.substring(0, 50)}...`);
+  }
+  
+  // Set mobile-friendly headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // MongoDB Connection
 const mongoUri = process.env.MONGODB_URI;
