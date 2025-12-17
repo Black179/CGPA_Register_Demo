@@ -150,36 +150,75 @@ const ResultSummary = () => {
         return;
       }
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
+      // Create a temporary container with optimized styles for single page PDF
+      const tempContainer = document.createElement('div');
+      tempContainer.style.cssText = `
+        width: 210mm;
+        padding: 10px;
+        font-size: 10px;
+        font-family: Arial, sans-serif;
+        page-break-inside: avoid;
+        overflow: hidden;
+      `;
+      
+      // Clone the content with optimized styles
+      const clonedElement = element.cloneNode(true);
+      
+      // Apply compact styles to tables
+      const tables = clonedElement.querySelectorAll('table');
+      tables.forEach(table => {
+        table.style.cssText = `
+          width: 100%;
+          font-size: 10px;
+          page-break-inside: avoid;
+          margin: 0;
+          border-collapse: collapse;
+        `;
+      });
+      
+      // Apply styles to table rows and cells
+      const rows = clonedElement.querySelectorAll('tr, td, th');
+      rows.forEach(row => {
+        row.style.cssText = `
+          page-break-inside: avoid;
+          padding: 2px;
+          font-size: 10px;
+        `;
+      });
+      
+      // Remove unnecessary elements
+      const buttons = clonedElement.querySelectorAll('button');
+      buttons.forEach(btn => btn.remove());
+      
+      tempContainer.appendChild(clonedElement);
+      document.body.appendChild(tempContainer);
+
+      const canvas = await html2canvas(tempContainer, {
+        scale: 1,
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        width: 794, // A4 width in pixels at 96 DPI
+        height: 1123 // A4 height in pixels at 96 DPI
       });
       
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
+      // Add image to PDF with minimal margins
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = 297; // A4 height in mm
+      const margin = 10; // 10mm margins
+      
+      pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth - (margin * 2), pdfHeight - (margin * 2));
+      
+      // Clean up temporary elements
+      document.body.removeChild(tempContainer);
+      
       pdf.save(`CGPA_Results_${userData.registerNo}.pdf`);
       
       toast({
         title: 'PDF Downloaded',
-        description: 'Results exported to PDF successfully!',
+        description: 'Results exported to single-page PDF successfully!',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -188,7 +227,7 @@ const ResultSummary = () => {
       console.error('Error exporting to PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to export PDF file',
+        description: 'Failed to export PDF. Please try again.',
         status: 'error',
         duration: 3000,
         isClosable: true,
