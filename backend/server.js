@@ -11,8 +11,8 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:5173', // Local development
-    process.env.CORS_ORIGIN || 'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
-    'https://cgpa-register-demo.vercel.app' // Alternative Vercel URL
+    'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
+    'https://cgpa-register-demo.onrender.com' // Backend URL for testing
   ],
   credentials: true
 }));
