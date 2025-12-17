@@ -19,7 +19,15 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cgpa-register', {
+const mongoUri = process.env.MONGODB_URI;
+
+if (!mongoUri) {
+  console.error('ERROR: MONGODB_URI environment variable is not set!');
+  console.error('Please set MONGODB_URI in your Render environment variables');
+  process.exit(1);
+}
+
+mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -28,6 +36,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cgpa-regi
 })
 .catch((error) => {
   console.error('MongoDB connection error:', error);
+  console.error('Failed to connect to MongoDB Atlas');
   process.exit(1);
 });
 
