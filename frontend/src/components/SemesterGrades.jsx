@@ -7,6 +7,7 @@ import {
 import { SEMESTER_SUBJECTS, GRADES } from '../constants/constants';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import axios from 'axios';
 
 const SemesterGrades = () => {
   const [currentSemester, setCurrentSemester] = useState(1);
@@ -189,7 +190,7 @@ const SemesterGrades = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const allGradesSelected = Array.from({ length: userData.totalSemesters }, (_, i) => i + 1)
       .every(sem => {
         const semSubjects = SEMESTER_SUBJECTS[sem] || [];
@@ -239,8 +240,41 @@ const SemesterGrades = () => {
       ...userData,
       semesters: semestersData
     };
-    localStorage.setItem('userData', JSON.stringify(completeData));
-    navigate('/result');
+
+    try {
+      // Save to backend database
+      const response = await axios.post('http://localhost:5000/api/user', completeData);
+      
+      if (response.status === 201) {
+        // Also save to localStorage for offline access
+        localStorage.setItem('userData', JSON.stringify(completeData));
+        
+        toast({
+          title: 'Data Saved Successfully',
+          description: 'Your grades have been saved to the database!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        
+        navigate('/result');
+      }
+    } catch (error) {
+      console.error('Error saving data to database:', error);
+      
+      // Fallback to localStorage if backend fails
+      localStorage.setItem('userData', JSON.stringify(completeData));
+      
+      toast({
+        title: 'Backend Error',
+        description: 'Saved locally only. Database connection failed.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      navigate('/result');
+    }
   };
 
   if (!userData) return null;

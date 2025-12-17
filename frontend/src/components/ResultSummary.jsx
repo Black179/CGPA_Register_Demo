@@ -107,19 +107,24 @@ const ResultSummary = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save logic here - for now just show success
-      toast({
-        title: 'Results Saved',
-        description: 'Your results have been saved successfully!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      // Save to backend database
+      const response = await axios.post('http://localhost:5000/api/user', userData);
+      
+      if (response.status === 201) {
+        toast({
+          title: 'Results Saved Successfully',
+          description: 'Your results have been saved to the database!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     } catch (error) {
-      console.error('Error saving results:', error);
+      console.error('Error saving results to database:', error);
+      
       toast({
-        title: 'Error',
-        description: 'Failed to save results',
+        title: 'Database Error',
+        description: 'Failed to save results to database. Please try again.',
         status: 'error',
         duration: 3000,
         isClosable: true,
