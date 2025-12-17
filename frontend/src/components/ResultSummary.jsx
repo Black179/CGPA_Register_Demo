@@ -353,17 +353,29 @@ const ResultSummary = () => {
         </Box>
 
         {/* Action Buttons */}
-        <HStack justify='space-between' mt={4}>
-          <Button onClick={() => navigate('/semester-grades')}>Back to Grades</Button>
+        <VStack 
+          spacing={3} 
+          mt={4}
+          direction={{ base: 'column', md: 'row' }}
+          align={{ base: 'stretch', md: 'center' }}
+          justify={{ base: 'center', md: 'space-between' }}
+        >
+          <Button 
+            onClick={() => navigate('/semester-grades')}
+            width={{ base: 'full', md: 'auto' }}
+          >
+            Back to Grades
+          </Button>
           <Button 
             colorScheme='blue' 
             onClick={handleSave}
             isLoading={isSaving}
             loadingText='Saving...'
+            width={{ base: 'full', md: 'auto' }}
           >
             Save Results
           </Button>
-        </HStack>
+        </VStack>
       </VStack>
     </Box>
   );

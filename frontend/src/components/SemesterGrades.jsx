@@ -369,8 +369,19 @@ const SemesterGrades = () => {
         </Table>
       </Box>
 
-      <HStack justify='space-between' mt={4}>
-        <Button onClick={() => navigate('/')}>Back</Button>
+      <VStack 
+        spacing={3} 
+        mt={4}
+        direction={{ base: 'column', md: 'row' }}
+        align={{ base: 'stretch', md: 'center' }}
+        justify={{ base: 'center', md: 'space-between' }}
+      >
+        <Button 
+          onClick={() => navigate('/')}
+          width={{ base: 'full', md: 'auto' }}
+        >
+          Back
+        </Button>
         <Button 
           colorScheme='blue' 
           onClick={handleSubmit}
@@ -379,10 +390,11 @@ const SemesterGrades = () => {
               subj => grades[`${currentSemester}-${subj.code}`]
             )
           }
+          width={{ base: 'full', md: 'auto' }}
         >
           Calculate Results
         </Button>
-      </HStack>
+      </VStack>
     </VStack>
   );
 };
