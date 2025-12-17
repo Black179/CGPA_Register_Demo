@@ -281,7 +281,15 @@ const SemesterGrades = () => {
         borderRadius='md' 
         borderColor='gray.200'
         boxShadow='sm'
+        maxH='60vh'
+        overflowY='auto'
         sx={{
+          '@media (max-width: 768px)': {
+            overflowX: 'auto',
+            overflowY: 'auto',
+            maxHeight: '60vh',
+            width: '100%'
+          },
           '&::-webkit-scrollbar': {
             width: '16px',
             height: '16px',
@@ -307,7 +315,13 @@ const SemesterGrades = () => {
           scrollbarColor: '#4A5568 #E2E8F0',
         }}
       >
-        <Table variant='simple' size='sm'>
+        <Table variant='simple' size='sm'
+          sx={{
+            '@media (max-width: 768px)': {
+              minWidth: '600px', // Ensure table maintains width for horizontal scroll
+            }
+          }}
+        >
           <Thead position='sticky' top={0} zIndex={1} bgColor='white'>
             <Tr>
               <Th>Subject Code</Th>

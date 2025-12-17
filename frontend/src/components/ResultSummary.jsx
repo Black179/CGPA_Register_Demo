@@ -277,8 +277,14 @@ const ResultSummary = () => {
               </Box>
               <Box
                 maxH='60vh' 
-                overflowY='auto' 
+                overflowY='auto'
                 sx={{
+                  '@media (max-width: 768px)': {
+                    overflowX: 'auto',
+                    overflowY: 'auto',
+                    maxHeight: '60vh',
+                    width: '100%'
+                  },
                   '&::-webkit-scrollbar': {
                     width: '16px',
                     height: '16px',
@@ -311,7 +317,13 @@ const ResultSummary = () => {
                       Semester {semester.semesterNo} - SGPA: {semester.sgpa}
                     </Text>
                   </Box>
-                  <Table variant='simple' size='sm'>
+                  <Table variant='simple' size='sm'
+                    sx={{
+                      '@media (max-width: 768px)': {
+                        minWidth: '700px', // Ensure table maintains width for horizontal scroll
+                      }
+                    }}
+                  >
                     <Thead position='sticky' top={0} zIndex={1} bgColor='white' boxShadow='sm'>
                       <Tr>
                         <Th borderWidth='1px' borderColor='gray.300'>Code</Th>
