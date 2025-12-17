@@ -405,15 +405,18 @@ const SemesterGrades = () => {
       </Box>
 
       <VStack 
-        spacing={3} 
-        mt={4}
+        spacing={4} 
+        mt={6}
         direction={{ base: 'column', md: 'row' }}
         align={{ base: 'stretch', md: 'center' }}
         justify={{ base: 'center', md: 'space-between' }}
+        width={{ base: 'full', md: 'auto' }}
       >
         <Button 
           onClick={() => navigate('/')}
           width={{ base: 'full', md: 'auto' }}
+          size={{ base: 'md', md: 'md' }}
+          py={{ base: 6, md: 4 }}
         >
           Back
         </Button>
@@ -426,6 +429,8 @@ const SemesterGrades = () => {
             )
           }
           width={{ base: 'full', md: 'auto' }}
+          size={{ base: 'md', md: 'md' }}
+          py={{ base: 6, md: 4 }}
         >
           Calculate Results
         </Button>

@@ -360,15 +360,18 @@ const ResultSummary = () => {
 
         {/* Action Buttons */}
         <VStack 
-          spacing={3} 
-          mt={4}
+          spacing={4} 
+          mt={6}
           direction={{ base: 'column', md: 'row' }}
           align={{ base: 'stretch', md: 'center' }}
           justify={{ base: 'center', md: 'space-between' }}
+          width={{ base: 'full', md: 'auto' }}
         >
           <Button 
             onClick={() => navigate('/semester-grades')}
             width={{ base: 'full', md: 'auto' }}
+            size={{ base: 'md', md: 'md' }}
+            py={{ base: 6, md: 4 }}
           >
             Back to Grades
           </Button>
@@ -378,6 +381,8 @@ const ResultSummary = () => {
             isLoading={isSaving}
             loadingText='Saving...'
             width={{ base: 'full', md: 'auto' }}
+            size={{ base: 'md', md: 'md' }}
+            py={{ base: 6, md: 4 }}
           >
             Save Results
           </Button>

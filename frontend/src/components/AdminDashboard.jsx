@@ -485,7 +485,6 @@ const AdminDashboard = () => {
           onClick={handleLogout}
           colorScheme="red" 
           variant="solid"
-          leftIcon={<span>🚪</span>}
         >
           Logout
         </Button>
@@ -703,38 +702,21 @@ const AdminDashboard = () => {
         </Box>
 
         <HStack spacing={4} mt={4}>
-        <Button 
-          onClick={fetchStudents}
-          colorScheme="blue" 
-          variant="outline"
-        >
-          Refresh Data
-        </Button>
-        
-        <Button 
-          onClick={addTestData}
-          colorScheme="green" 
-          variant="solid"
-        >
-          Add Test Data
-        </Button>
         
         <Button 
           onClick={exportToExcel}
-          colorScheme="yellow" 
+          colorScheme="blue" 
           variant="solid"
-          leftIcon={<span>📊</span>}
         >
-          Export to Excel
+          Excel
         </Button>
         
         <Button 
           onClick={exportToPDF}
-          colorScheme="red" 
-          variant="solid"
-          leftIcon={<span>📄</span>}
-        >
-          Export to PDF
+          colorScheme="blue" 
+          variant="solid"  
+            >
+          PDF
         </Button>
       </HStack>
       </VStack>
