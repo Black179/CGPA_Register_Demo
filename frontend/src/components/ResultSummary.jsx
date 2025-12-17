@@ -155,11 +155,14 @@ const ResultSummary = () => {
       tempContainer.style.cssText = `
         width: 210mm;
         padding: 10px;
+        font-family: Arial, Helvetica, sans-serif;
         font-size: 10px;
-        font-family: Arial, sans-serif;
+        line-height: 1.4;
+        letter-spacing: 0.3px;
         page-break-inside: avoid;
         overflow: hidden;
-        -webkit-transform: scale(0.9);
+        white-space: normal;
+        word-break: break-word;
         transform: scale(0.9);
         transform-origin: top left;
       `;
@@ -167,29 +170,86 @@ const ResultSummary = () => {
       // Clone the content with optimized styles
       const clonedElement = element.cloneNode(true);
       
+      // Apply system-safe fonts to all text elements
+      const textElements = clonedElement.querySelectorAll('*');
+      textElements.forEach(el => {
+        if (el.style.fontFamily) {
+          el.style.fontFamily = 'Arial, Helvetica, sans-serif';
+        }
+        if (el.style.lineHeight) {
+          el.style.lineHeight = '1.4';
+        }
+        if (el.style.letterSpacing) {
+          el.style.letterSpacing = '0.3px';
+        }
+        el.style.whiteSpace = 'normal';
+        el.style.wordBreak = 'break-word';
+      });
+      
       // Apply compact styles to tables
       const tables = clonedElement.querySelectorAll('table');
       tables.forEach(table => {
         table.style.cssText = `
           width: 100%;
+          font-family: Arial, Helvetica, sans-serif;
           font-size: 10px;
+          line-height: 1.4;
+          letter-spacing: 0.3px;
           page-break-inside: avoid;
           margin: 0;
           border-collapse: collapse;
           table-layout: fixed;
+          white-space: normal;
+          word-break: break-word;
         `;
       });
       
-      // Apply styles to table rows and cells
-      const rows = clonedElement.querySelectorAll('tr, td, th');
-      rows.forEach(row => {
-        row.style.cssText = `
-          page-break-inside: avoid;
-          padding: 2px;
+      // Apply styles to table headers
+      const headers = clonedElement.querySelectorAll('th');
+      headers.forEach(header => {
+        header.style.cssText = `
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 12px;
+          line-height: 1.4;
+          letter-spacing: 0.3px;
+          padding: 8px 6px;
+          vertical-align: middle;
+          white-space: normal;
+          word-break: break-word;
+          text-align: center;
+          font-weight: bold;
+        `;
+      });
+      
+      // Apply styles to table cells
+      const cells = clonedElement.querySelectorAll('td');
+      cells.forEach(cell => {
+        cell.style.cssText = `
+          font-family: Arial, Helvetica, sans-serif;
           font-size: 10px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          line-height: 1.4;
+          letter-spacing: 0.3px;
+          padding: 6px 8px;
+          vertical-align: middle;
+          white-space: normal;
+          word-break: break-word;
+          page-break-inside: avoid;
+          border: 1px solid #e2e8f0;
+        `;
+      });
+      
+      // Apply styles to headings
+      const headings = clonedElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      headings.forEach(heading => {
+        const fontSize = heading.tagName.toLowerCase() === 'h1' ? '14px' : '12px';
+        heading.style.cssText = `
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: ${fontSize};
+          line-height: 1.6;
+          letter-spacing: 0.3px;
+          margin: 10px 0 5px 0;
+          white-space: normal;
+          word-break: break-word;
         `;
       });
       
@@ -206,7 +266,8 @@ const ResultSummary = () => {
         const mobileElements = clonedElement.querySelectorAll('*');
         mobileElements.forEach(el => {
           if (el.style.fontSize) {
-            el.style.fontSize = '8px';
+            const currentSize = parseInt(el.style.fontSize);
+            el.style.fontSize = `${Math.max(8, currentSize - 2)}px`;
           }
         });
       }
@@ -240,11 +301,17 @@ const ResultSummary = () => {
         width: canvasWidth,
         height: canvasHeight,
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        logging: false
       });
       
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
       
       // Add image to PDF with minimal margins
       const pdfWidth = 210; // A4 width in mm
