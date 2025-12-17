@@ -243,7 +243,8 @@ const SemesterGrades = () => {
 
     try {
       // Save to backend database
-      const response = await axios.post('http://localhost:5000/api/user', completeData);
+      const apiEndpoint = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await axios.post(`${apiEndpoint}/api/user`, completeData);
       
       if (response.status === 201) {
         // Also save to localStorage for offline access
