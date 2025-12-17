@@ -159,6 +159,9 @@ const ResultSummary = () => {
         font-family: Arial, sans-serif;
         page-break-inside: avoid;
         overflow: hidden;
+        -webkit-transform: scale(0.9);
+        transform: scale(0.9);
+        transform-origin: top left;
       `;
       
       // Clone the content with optimized styles
@@ -173,6 +176,7 @@ const ResultSummary = () => {
           page-break-inside: avoid;
           margin: 0;
           border-collapse: collapse;
+          table-layout: fixed;
         `;
       });
       
@@ -183,22 +187,60 @@ const ResultSummary = () => {
           page-break-inside: avoid;
           padding: 2px;
           font-size: 10px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         `;
       });
+      
+      // Apply mobile-specific styles
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        tempContainer.style.cssText += `
+          transform: scale(0.7);
+          -webkit-transform: scale(0.7);
+          transform-origin: top left;
+        `;
+        
+        // Further reduce font size for mobile
+        const mobileElements = clonedElement.querySelectorAll('*');
+        mobileElements.forEach(el => {
+          if (el.style.fontSize) {
+            el.style.fontSize = '8px';
+          }
+        });
+      }
       
       // Remove unnecessary elements
       const buttons = clonedElement.querySelectorAll('button');
       buttons.forEach(btn => btn.remove());
       
+      // Remove excessive spacing
+      const verticalStacks = clonedElement.querySelectorAll('.chakra-stack');
+      verticalStacks.forEach(stack => {
+        if (stack.style.marginTop && parseInt(stack.style.marginTop) > 10) {
+          stack.style.marginTop = '5px';
+        }
+        if (stack.style.marginBottom && parseInt(stack.style.marginBottom) > 10) {
+          stack.style.marginBottom = '5px';
+        }
+      });
+      
       tempContainer.appendChild(clonedElement);
       document.body.appendChild(tempContainer);
 
+      // Adjust canvas dimensions for mobile
+      const canvasWidth = isMobile ? 600 : 794;
+      const canvasHeight = isMobile ? 900 : 1123;
+      
       const canvas = await html2canvas(tempContainer, {
         scale: 1,
         useCORS: true,
         allowTaint: true,
-        width: 794, // A4 width in pixels at 96 DPI
-        height: 1123 // A4 height in pixels at 96 DPI
+        width: canvasWidth,
+        height: canvasHeight,
+        scrollX: 0,
+        scrollY: 0
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -209,7 +251,11 @@ const ResultSummary = () => {
       const pdfHeight = 297; // A4 height in mm
       const margin = 10; // 10mm margins
       
-      pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth - (margin * 2), pdfHeight - (margin * 2));
+      // Calculate image dimensions to fit A4
+      const imgWidth = pdfWidth - (margin * 2);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
       
       // Clean up temporary elements
       document.body.removeChild(tempContainer);
@@ -218,7 +264,7 @@ const ResultSummary = () => {
       
       toast({
         title: 'PDF Downloaded',
-        description: 'Results exported to single-page PDF successfully!',
+        description: isMobile ? 'Mobile-optimized single-page PDF exported!' : 'Results exported to single-page PDF successfully!',
         status: 'success',
         duration: 3000,
         isClosable: true,
