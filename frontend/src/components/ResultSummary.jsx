@@ -28,14 +28,15 @@ const ResultSummary = () => {
   const calculateCGPA = () => {
     if (!userData?.semesters?.length) return 0;
     
-    const totalCredits = userData.semesters.reduce((sum, sem) => {
-      return sum + sem.subjects.reduce((s, subj) => s + subj.credits, 0);
-    }, 0);
+    let totalCredits = 0;
+    let weightedSum = 0;
     
-    const weightedSum = userData.semesters.reduce((sum, sem) => {
-      const semCredits = sem.subjects.reduce((s, subj) => s + subj.credits, 0);
-      return sum + (sem.sgpa * semCredits);
-    }, 0);
+    userData.semesters.forEach(semester => {
+      semester.subjects.forEach(subject => {
+        totalCredits += subject.credits;
+        weightedSum += (subject.gradePoint * subject.credits);
+      });
+    });
     
     return parseFloat((weightedSum / totalCredits).toFixed(2));
   };
