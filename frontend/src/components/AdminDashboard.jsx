@@ -150,7 +150,7 @@ const AdminDashboard = () => {
       });
     }).length;
     
-    // Calculate Highest CGPA and Average CGPA
+    // Calculate Average CGPA
     const studentCGPAs = students.map(student => {
       if (!student?.semesters || student.semesters.length === 0) return 0;
       const allSubjects = student.semesters.flatMap(sem => sem.subjects || []);
@@ -159,10 +159,9 @@ const AdminDashboard = () => {
       return totalCredits > 0 ? weightedSum / totalCredits : 0;
     }).filter(cgpa => cgpa > 0);
     
-    const highestCGPA = studentCGPAs.length > 0 ? Math.max(...studentCGPAs) : 0;
     const averageCGPA = studentCGPAs.length > 0 ? studentCGPAs.reduce((sum, cgpa) => sum + cgpa, 0) / studentCGPAs.length : 0;
 
-    return { totalStudents, arrearHavingStudents, highestCGPA, averageCGPA };
+    return { totalStudents, arrearHavingStudents, averageCGPA };
   };
 
   // Function to get the maximum number of semesters across all students
@@ -340,7 +339,19 @@ const AdminDashboard = () => {
       headers['Total Arrear (Overall)'] = 'overall.totalArrears';
       headers['Signature'] = 'signature';
       
-      const ws = XLSX.utils.json_to_sheet(studentData.map(student => {
+      // Create heading data
+      const headingData = [
+        ['PSNA College of Engineering & Technology, Dindigul – 624622'],
+        ['(An Autonomous Institution, Affiliated to Anna University, Chennai)'],
+        ['Department of Electronics Engineering (VLSI Design and Technology)'],
+        ['I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)'],
+        ['CGPA Calculation Upto II Semester'],
+        [],
+        []
+      ];
+      
+      // Create student data rows
+      const studentRows = studentData.map(student => {
         const row = {
           'S.No': student.sno,
           'SECTION': student.section,
@@ -364,7 +375,20 @@ const AdminDashboard = () => {
         row['Signature'] = '';
         
         return row;
-      }));
+      });
+      
+      // Combine heading and student data
+      const allData = [...headingData, ...studentRows];
+      
+      // Create worksheet with combined data
+      const ws = XLSX.utils.json_to_sheet(allData, { skipHeader: true });
+      
+      // Add headers as a separate row
+      const headerRow = Object.keys(headers);
+      XLSX.utils.sheet_add_aoa(ws, [headerRow], { origin: -1 });
+      
+      // Add student data
+      XLSX.utils.sheet_add_json(ws, studentRows, { origin: -1, skipHeader: true });
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Student Records');
@@ -577,33 +601,26 @@ const AdminDashboard = () => {
       </HStack>
 
       {/* Statistics Cards */}
-      <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={4} mb={6}>
+      <Box display="grid" gridTemplateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4} mb={6}>
         <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize="lg" fontWeight="bold" color="blue.600">
+          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="blue.600">
             {stats.totalStudents}
           </Text>
-          <Text fontSize="sm" color="gray.600">Total Students</Text>
+          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Total Students</Text>
         </Box>
         
         <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize="lg" fontWeight="bold" color="green.600">
+          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="green.600">
             {stats.arrearHavingStudents}
           </Text>
-          <Text fontSize="sm" color="gray.600">Arrear Having Students</Text>
+          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Arrear Having Students</Text>
         </Box>
         
         <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize="lg" fontWeight="bold" color="purple.600">
-            {stats.highestCGPA.toFixed(2)}
-          </Text>
-          <Text fontSize="sm" color="gray.600">Highest CGPA</Text>
-        </Box>
-        
-        <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize="lg" fontWeight="bold" color="orange.600">
+          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="orange.600">
             {stats.averageCGPA.toFixed(2)}
           </Text>
-          <Text fontSize="sm" color="gray.600">Average CGPA</Text>
+          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Average CGPA</Text>
         </Box>
       </Box>
 
@@ -611,10 +628,10 @@ const AdminDashboard = () => {
       <Box 
         bg="white" 
         borderRadius="8px" 
-        p={4} 
+        p={{ base: 2, md: 4 }} 
         boxShadow="0 2px 4px rgba(0,0,0,0.1)"
       >
-        <Heading size="md" mb={2} color="gray.800">
+        <Heading size={{ base: "sm", md: "md" }} mb={2} color="gray.800">
           Student Academic Records (Semester-wise)
         </Heading>
         
@@ -656,7 +673,7 @@ const AdminDashboard = () => {
               scrollbarColor: '#4A5568 #E2E8F0',
             }}
           >
-            <Table id="student-table" variant="simple" size="sm" width="100%" minWidth="1600px" fontSize="xs" style={{ 
+            <Table id="student-table" variant="simple" size={{ base: "xs", md: "sm" }} width="100%" minWidth="1600px" fontSize={{ base: "10px", md: "xs" }} style={{ 
               tableLayout: 'auto',
               border: '2px solid #2D3748',
               borderCollapse: 'separate',
@@ -664,12 +681,12 @@ const AdminDashboard = () => {
             }}>
               <Thead position="sticky" top={0} zIndex={1} bgColor="white" style={{ border: '2px solid #2D3748' }}>
                 <Tr style={{ border: '2px solid #2D3748' }}>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="50px" style={{ 
+                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="50px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
                   }}>S.No</Th>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="80px" style={{ 
+                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
@@ -677,8 +694,8 @@ const AdminDashboard = () => {
                   <Th 
                     rowSpan={2} 
                     textAlign="center" 
-                    p={2} 
-                    fontSize="xs" 
+                    p={{ base: 1, md: 2 }} 
+                    fontSize={{ base: "8px", md: "xs" }} 
                     width="100px" 
                     style={{ 
                       border: '2px solid #2D3748',
@@ -707,30 +724,30 @@ const AdminDashboard = () => {
                       </span>
                     )}
                   </Th>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="150px" style={{ 
+                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="150px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
                   }}>NAME</Th>
                   {/* Dynamic semester columns */}
                   {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
-                    <Th key={semNum} colSpan={4} textAlign="center" bgColor={semNum % 2 === 0 ? "green.50" : "blue.50"} p={1} fontSize="xs" style={{ 
+                    <Th key={semNum} colSpan={4} textAlign="center" bgColor={semNum % 2 === 0 ? "green.50" : "blue.50"} p={1} fontSize={{ base: "8px", md: "xs" }} style={{ 
                       border: '2px solid #2D3748',
                       fontWeight: 'bold'
                     }}>
                       SEM {semNum}
                     </Th>
                   ))}
-                  <Th colSpan={3} textAlign="center" bgColor="purple.50" p={1} fontSize="xs" style={{ 
+                  <Th colSpan={3} textAlign="center" bgColor="purple.50" p={1} fontSize={{ base: "8px", md: "xs" }} style={{ 
                     border: '2px solid #2D3748',
                     fontWeight: 'bold'
                   }}>Overall</Th>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="100px" style={{ 
+                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="100px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
                   }}>Signature</Th>
-                  <Th rowSpan={2} textAlign="center" p={2} fontSize="xs" width="80px" style={{ 
+                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#EDF2F7',
                     fontWeight: 'bold'
@@ -740,22 +757,22 @@ const AdminDashboard = () => {
                   {/* Dynamic semester sub-columns */}
                   {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
                     <React.Fragment key={`sub-${semNum}`}>
-                      <Th textAlign="center" fontSize="10px" p={1} width="80px" style={{ 
+                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
                         border: '2px solid #2D3748',
                         backgroundColor: '#F7FAFC',
                         fontWeight: 'bold'
                       }}>ARREAR COUNT</Th>
-                      <Th textAlign="center" fontSize="10px" p={1} width="80px" style={{ 
+                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
                         border: '2px solid #2D3748',
                         backgroundColor: '#F7FAFC',
                         fontWeight: 'bold'
                       }}>TOTAL ARREAR</Th>
-                      <Th textAlign="center" fontSize="10px" p={1} width="60px" style={{ 
+                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
                         border: '2px solid #2D3748',
                         backgroundColor: '#F7FAFC',
                         fontWeight: 'bold'
                       }}>TOT</Th>
-                      <Th textAlign="center" fontSize="10px" p={1} width="60px" style={{ 
+                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
                         border: '2px solid #2D3748',
                         backgroundColor: '#F7FAFC',
                         fontWeight: 'bold'
@@ -763,17 +780,17 @@ const AdminDashboard = () => {
                     </React.Fragment>
                   ))}
                   {/* Overall sub-columns */}
-                  <Th textAlign="center" fontSize="10px" p={1} width="60px" style={{ 
+                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#F7FAFC',
                     fontWeight: 'bold'
                   }}>CGPA</Th>
-                  <Th textAlign="center" fontSize="10px" p={1} width="60px" style={{ 
+                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#F7FAFC',
                     fontWeight: 'bold'
                   }}>TOT</Th>
-                  <Th textAlign="center" fontSize="10px" p={1} width="80px" style={{ 
+                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
                     border: '2px solid #2D3748',
                     backgroundColor: '#F7FAFC',
                     fontWeight: 'bold'
@@ -783,30 +800,30 @@ const AdminDashboard = () => {
               <Tbody style={{ border: '2px solid #2D3748' }}>
                 {studentData.map((student) => (
                   <Tr key={student.registerNo} style={{ border: '2px solid #2D3748' }}>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.sno}</Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.section}</Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.registerNo}</Td>
-                    <Td p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.name}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.sno}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.section}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.registerNo}</Td>
+                    <Td p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.name}</Td>
                     {/* Dynamic semester data */}
                     {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
                       const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
                       return (
                         <React.Fragment key={`data-${semNum}`}>
-                          <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsCount}</Td>
-                          <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsTotal}</Td>
-                          <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{semData.total}</Td>
-                          <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{semData.sgpa.toFixed(2)}</Td>
+                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsCount}</Td>
+                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsTotal}</Td>
+                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.total}</Td>
+                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.sgpa.toFixed(2)}</Td>
                         </React.Fragment>
                       );
                     })}
                     {/* Overall Data */}
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.overall.cgpa.toFixed(2)}</Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.overall.total}</Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>{student.overall.totalArrears}</Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}></Td>
-                    <Td textAlign="center" p={1} fontSize="xs" style={{ border: '1px solid #CBD5E0' }}>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.cgpa.toFixed(2)}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.total}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.totalArrears}</Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}></Td>
+                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>
                       <Button 
-                        size="xs" 
+                        size={{ base: "xs", md: "xs" }} 
                         colorScheme="red" 
                         onClick={() => handleDeleteStudent(student.registerNo)}
                       >
@@ -822,12 +839,14 @@ const AdminDashboard = () => {
 
         </Box>
 
-        <HStack spacing={4} mt={4}>
+        <HStack spacing={{ base: 2, md: 4 }} mt={4} direction={{ base: "column", md: "row" }}>
         
         <Button 
           onClick={exportToExcel}
           colorScheme="blue" 
           variant="solid"
+          size={{ base: "sm", md: "md" }}
+          width={{ base: "full", md: "auto" }}
         >
           Excel
         </Button>
@@ -836,7 +855,9 @@ const AdminDashboard = () => {
           onClick={exportToPDF}
           colorScheme="blue" 
           variant="solid"  
-            >
+          size={{ base: "sm", md: "md" }}
+          width={{ base: "full", md: "auto" }}
+        >
           PDF
         </Button>
       </HStack>
