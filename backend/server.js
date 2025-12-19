@@ -18,6 +18,7 @@ app.use(cors({
       'http://localhost:5173', // Local development
       'http://localhost:3000', // Alternative local development
       'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
+      'https://cgpa-register-demo-01.vercel.app', // Specific production Vercel URL
       'https://cgpa-register-demo.onrender.com', // Backend URL for testing
       // Allow any subdomain of vercel.app for mobile compatibility
       /^https:\/\/.*\.vercel\.app$/
@@ -37,7 +38,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'cache-control', 'pragma'],
   optionsSuccessStatus: 200
 }));
 

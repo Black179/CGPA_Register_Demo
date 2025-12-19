@@ -147,10 +147,8 @@ const AdminDashboard = () => {
       
       const response = await fetch(apiEndpoint, {
         signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+        method: 'GET',
+        mode: 'cors'
       });
       
       clearTimeout(timeoutId);
