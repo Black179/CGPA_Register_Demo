@@ -610,6 +610,9 @@ const AdminDashboard = () => {
       }
 
       console.log(`Exporting ${freshStudents.length} student records to PDF...`);
+      
+      // Process fresh data for export
+      const freshStudentData = getStudentSemesterData();
 
       // Create a temporary container with heading and dynamically generated table
       const tempContainer = document.createElement('div');
