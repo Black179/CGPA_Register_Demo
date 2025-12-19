@@ -82,17 +82,27 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchStudents(false); // Initial fetch is not background
+    let isMounted = true;
+    let intervalId = null;
     
-    // Add real-time data refresh for mobile
-    const interval = setInterval(() => {
-      fetchStudents(true); // Background refresh
-    }, 30000); // Refresh every 30 seconds for real-time updates
+    const fetchWithMountCheck = async (isBackground = false) => {
+      if (isMounted) {
+        await fetchStudents(isBackground);
+      }
+    };
+    
+    // Initial fetch
+    fetchWithMountCheck(false);
+    
+    // Add real-time data refresh for mobile (reduced frequency to prevent issues)
+    intervalId = setInterval(() => {
+      fetchWithMountCheck(true); // Background refresh
+    }, 60000); // Increased to 60 seconds to reduce server load
     
     // Add visibility change listener for mobile
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchStudents(true); // Background refresh when app becomes visible
+      if (!document.hidden && isMounted) {
+        fetchWithMountCheck(true); // Background refresh when app becomes visible
       }
     };
     
@@ -100,19 +110,26 @@ const AdminDashboard = () => {
     
     // Add focus listener for mobile
     const handleFocus = () => {
-      fetchStudents(true); // Background refresh when app gains focus
+      if (isMounted) {
+        fetchWithMountCheck(true); // Background refresh when app gains focus
+      }
     };
     
     window.addEventListener('focus', handleFocus);
     
     return () => {
-      clearInterval(interval);
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
   const fetchStudents = async (isBackgroundRefresh = false) => {
+    // Create a new AbortController for each request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
     try {
       // Don't show loading for background refreshes to avoid mobile UI flicker
       if (!isBackgroundRefresh) {
@@ -127,10 +144,6 @@ const AdminDashboard = () => {
         : 'http://localhost:5000/api/admin/students';
       
       console.log('Using API endpoint:', apiEndpoint);
-      
-      // Add mobile-specific headers and timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for mobile
       
       const response = await fetch(apiEndpoint, {
         signal: controller.signal,
@@ -162,21 +175,23 @@ const AdminDashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        hostname: window.location.hostname,
-        userAgent: navigator.userAgent
-      });
+      // Clear timeout if it exists
+      clearTimeout(timeoutId);
       
-      // Don't show error toast for background refreshes or abort errors
+      console.error('Error fetching students:', error);
+      
+      // Don't show error toast for background refreshes, abort errors, or timeout errors
       if (error.name !== 'AbortError' && !isBackgroundRefresh) {
+        // Check if it's a timeout error
+        const isTimeout = error.message.includes('timeout') || error.name === 'AbortError';
+        
         toast({
-          title: 'Connection Error',
-          description: `Failed to fetch student data: ${error.message}. Check if server is running.`,
+          title: isTimeout ? 'Connection Timeout' : 'Connection Error',
+          description: isTimeout 
+            ? 'Server connection timed out. Please check your internet connection and try again.'
+            : `Failed to fetch student data: ${error.message}. Check if server is running.`,
           status: 'error',
-          duration: 5000,
+          duration: isTimeout ? 4000 : 5000,
           isClosable: true,
         });
       }
