@@ -64,10 +64,11 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  // Responsive values
-  const headingSize = useBreakpointValue({ base: 'xl', md: '2xl' });
-  const buttonSize = useBreakpointValue({ base: 'sm', md: 'md' });
-  const padding = useBreakpointValue({ base: 4, md: 6 });
+  // Responsive values for both laptop and mobile
+  const headingSize = useBreakpointValue({ base: 'xl', md: '2xl', lg: '3xl' });
+  const buttonSize = useBreakpointValue({ base: 'sm', md: 'md', lg: 'md' });
+  const padding = useBreakpointValue({ base: 4, md: 6, lg: 8 });
+  const containerPadding = useBreakpointValue({ base: 2, md: 4, lg: 6 });
 
   const handleLogout = () => {
     toast({
@@ -81,17 +82,17 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchStudents();
+    fetchStudents(false); // Initial fetch is not background
     
     // Add real-time data refresh for mobile
     const interval = setInterval(() => {
-      fetchStudents();
+      fetchStudents(true); // Background refresh
     }, 30000); // Refresh every 30 seconds for real-time updates
     
     // Add visibility change listener for mobile
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        fetchStudents(); // Refresh when app becomes visible
+        fetchStudents(true); // Background refresh when app becomes visible
       }
     };
     
@@ -99,7 +100,7 @@ const AdminDashboard = () => {
     
     // Add focus listener for mobile
     const handleFocus = () => {
-      fetchStudents(); // Refresh when app gains focus
+      fetchStudents(true); // Background refresh when app gains focus
     };
     
     window.addEventListener('focus', handleFocus);
@@ -111,10 +112,9 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (isBackgroundRefresh = false) => {
     try {
       // Don't show loading for background refreshes to avoid mobile UI flicker
-      const isBackgroundRefresh = arguments.callee.caller && arguments.callee.caller.name === 'handleVisibilityChange';
       if (!isBackgroundRefresh) {
         setLoading(true);
       }
@@ -397,15 +397,19 @@ const AdminDashboard = () => {
       headers['Total Arrear (Overall)'] = 'overall.totalArrears';
       headers['Signature'] = 'signature';
       
-      // Create heading data with proper formatting for mobile
+      // Create enhanced heading data with proper formatting for mobile and desktop
+      const isMobile = window.innerWidth <= 768;
       const headingData = [
         ['PSNA College of Engineering & Technology, Dindigul – 624622'],
         ['(An Autonomous Institution, Affiliated to Anna University, Chennai)'],
         ['Department of Electronics Engineering (VLSI Design and Technology)'],
         ['I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)'],
         ['CGPA Calculation Upto II Semester'],
-        [],
-        []
+        [`Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`],
+        [], // Empty row for spacing
+        ['Device: ' + (isMobile ? 'Mobile Optimized' : 'Desktop Optimized')],
+        [], // Empty row before headers
+        []  // Empty row for headers
       ];
       
       // Create student data rows with real-time data
@@ -445,53 +449,90 @@ const AdminDashboard = () => {
       // Add student data
       XLSX.utils.sheet_add_json(ws, studentRows, { origin: -1, skipHeader: true });
       
-      // Set column widths for better mobile viewing
-      const colWidths = [
-        { wch: 8 },  // S.No
-        { wch: 12 }, // SECTION
-        { wch: 15 }, // REG NO
-        { wch: 25 }, // NAME
+      // Set responsive column widths for better mobile and desktop viewing
+      const baseColumnWidths = isMobile ? [
+        { wch: 6 },  // S.No - smaller for mobile
+        { wch: 8 },  // SECTION - smaller for mobile
+        { wch: 12 }, // REG NO - adjusted for mobile
+        { wch: 20 }, // NAME - adjusted for mobile
+      ] : [
+        { wch: 8 },  // S.No - desktop size
+        { wch: 12 }, // SECTION - desktop size
+        { wch: 15 }, // REG NO - desktop size
+        { wch: 25 }, // NAME - desktop size
       ];
       
-      // Add dynamic column widths for semesters
+      // Add dynamic column widths for semesters (responsive)
+      const semesterWidth = isMobile ? 12 : 15;
+      const smallWidth = isMobile ? 8 : 10;
+      
       for (let sem = 1; sem <= maxSemesters; sem++) {
-        colWidths.push({ wch: 15 }); // ARREAR COUNT
-        colWidths.push({ wch: 15 }); // TOTAL ARREAR
-        colWidths.push({ wch: 10 }); // TOT
-        colWidths.push({ wch: 10 }); // SGPA
+        baseColumnWidths.push({ wch: semesterWidth }); // ARREAR COUNT
+        baseColumnWidths.push({ wch: semesterWidth }); // TOTAL ARREAR
+        baseColumnWidths.push({ wch: smallWidth });   // TOT
+        baseColumnWidths.push({ wch: smallWidth });   // SGPA
       }
       
       // Add overall column widths
-      colWidths.push({ wch: 10 }); // CGPA
-      colWidths.push({ wch: 10 }); // TOT
-      colWidths.push({ wch: 15 }); // Total Arrear
-      colWidths.push({ wch: 15 }); // Signature
+      baseColumnWidths.push({ wch: smallWidth });     // CGPA
+      baseColumnWidths.push({ wch: smallWidth });     // TOT
+      baseColumnWidths.push({ wch: semesterWidth }); // Total Arrear
+      baseColumnWidths.push({ wch: semesterWidth }); // Signature
       
-      ws['!cols'] = colWidths;
+      ws['!cols'] = baseColumnWidths;
 
+      // Create workbook with responsive sheet name
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Student Records');
+      const sheetName = isMobile ? 'Mobile_View_Records' : 'Student_Records';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
       
-      // Generate filename with timestamp
+      // Generate filename with device indicator and timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `CGPA_Student_Records_${timestamp}.xlsx`;
+      const deviceTag = isMobile ? 'Mobile' : 'Desktop';
+      const filename = `CGPA_Records_${deviceTag}_${timestamp}.xlsx`;
       
-      // Use mobile-compatible download method
-      if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
-        // Mobile-specific download
-        XLSX.writeFile(wb, filename);
-      } else {
-        // Desktop download
-        XLSX.writeFile(wb, filename);
+      // Enhanced mobile and desktop compatible download
+      try {
+        if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
+          // Mobile-optimized export with smaller file size
+          const opts = { compression: true, type: 'binary' };
+          XLSX.writeFile(wb, filename, opts);
+        } else {
+          // Desktop export with full features
+          XLSX.writeFile(wb, filename);
+        }
+        
+        toast({
+          title: 'Excel Generated Successfully',
+          description: `Excel file has been ${isMobile ? 'optimized for mobile view' : 'generated for desktop view'} and downloaded`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (downloadError) {
+        // Fallback method for problematic mobile browsers
+        console.warn('Standard download failed, trying fallback method:', downloadError);
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: 'Excel Downloaded (Fallback)',
+          description: 'File downloaded using alternative method for better compatibility',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
       }
-      
-      toast({
-        title: 'Success',
-        description: 'Excel file downloaded successfully!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       toast({
@@ -530,30 +571,37 @@ const AdminDashboard = () => {
 
       // Create a temporary container with heading and table
       const tempContainer = document.createElement('div');
-      tempContainer.style.padding = '20px';
+      
+      // Responsive design for both laptop and mobile
+      const isMobile = window.innerWidth <= 768;
+      tempContainer.style.padding = isMobile ? '10px' : '20px';
       tempContainer.style.backgroundColor = 'white';
       tempContainer.style.fontFamily = 'Arial, sans-serif';
       tempContainer.style.width = '100%';
       tempContainer.style.overflow = 'hidden';
+      tempContainer.style.fontSize = isMobile ? '12px' : '14px';
       
-      // Add college heading
+      // Add college heading with responsive sizing
       const heading = document.createElement('div');
       heading.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 5px 0; font-size: 16px; font-weight: bold;">
+        <div style="text-align: center; margin-bottom: ${isMobile ? '15px' : '20px'};">
+          <h2 style="margin: ${isMobile ? '3px' : '5px'} 0; font-size: ${isMobile ? '14px' : '16px'}; font-weight: bold; line-height: 1.2;">
             PSNA College of Engineering & Technology, Dindigul – 624622
           </h2>
-          <p style="margin: 3px 0; font-size: 14px; font-style: italic;">
+          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; font-style: italic; line-height: 1.1;">
             (An Autonomous Institution, Affiliated to Anna University, Chennai)
           </p>
-          <p style="margin: 3px 0; font-size: 14px;">
+          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; line-height: 1.1;">
             Department of Electronics Engineering (VLSI Design and Technology)
           </p>
-          <h3 style="margin: 8px 0; font-size: 15px; font-weight: bold;">
+          <h3 style="margin: ${isMobile ? '5px' : '8px'} 0; font-size: ${isMobile ? '13px' : '15px'}; font-weight: bold; line-height: 1.2;">
             I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)
           </h3>
-          <p style="margin: 3px 0; font-size: 14px; font-weight: bold;">
+          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; font-weight: bold; line-height: 1.1;">
             CGPA Calculation Upto II Semester
+          </p>
+          <p style="margin: ${isMobile ? '8px' : '10px'} 0 0 0; font-size: ${isMobile ? '10px' : '12px'}; color: #666;">
+            Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
       `;
@@ -738,41 +786,85 @@ const AdminDashboard = () => {
 
   return (
     <Box minH="100vh" bg="gray.50">
-      <VStack spacing={6} p={6} align="stretch" minH="100vh">
-      <HStack justify="space-between" w="100%">
-        <Heading size="2xl" color="blue.600">
-          Admin Dashboard
-        </Heading>
+      <VStack spacing={6} p={containerPadding} align="stretch" minH="100vh">
+      <HStack 
+        justify="space-between" 
+        w="100%" 
+        direction={{ base: "column", sm: "row" }}
+        spacing={{ base: 4, sm: 0 }}
+        align={{ base: "flex-start", sm: "center" }}
+      >
+        <VStack align="start" spacing={2} flex={1}>
+          <Heading size={headingSize} color="blue.600" textAlign={{ base: "left", sm: "left" }}>
+            Admin Dashboard
+          </Heading>
+          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" textAlign={{ base: "left", sm: "left" }}>
+            CGPA Student Records Management System
+          </Text>
+        </VStack>
         <Button 
           onClick={handleLogout}
           colorScheme="red" 
           variant="solid"
+          size={buttonSize}
+          width={{ base: "full", sm: "auto" }}
+          alignSelf={{ base: "stretch", sm: "auto" }}
         >
           Logout
         </Button>
       </HStack>
 
       {/* Statistics Cards */}
-      <Box display="grid" gridTemplateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4} mb={6}>
-        <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="blue.600">
+      <Box 
+        display="grid" 
+        gridTemplateColumns={{ 
+          base: "1fr", 
+          sm: "repeat(2, 1fr)", 
+          lg: "repeat(3, 1fr)" 
+        }} 
+        gap={{ base: 3, md: 4, lg: 6 }} 
+        mb={6}
+      >
+        <Box 
+          p={{ base: 3, md: 4, lg: 5 }} 
+          borderRadius="8px" 
+          bg="white" 
+          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+          transition="all 0.3s ease"
+          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+        >
+          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="blue.600">
             {stats.totalStudents}
           </Text>
-          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Total Students</Text>
+          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Total Students</Text>
         </Box>
         
-        <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="green.600">
+        <Box 
+          p={{ base: 3, md: 4, lg: 5 }} 
+          borderRadius="8px" 
+          bg="white" 
+          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+          transition="all 0.3s ease"
+          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+        >
+          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="green.600">
             {stats.arrearHavingStudents}
           </Text>
-          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Arrear Having Students</Text>
+          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Arrear Having Students</Text>
         </Box>
         
-        <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
-          <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="orange.600">
+        <Box 
+          p={{ base: 3, md: 4, lg: 5 }} 
+          borderRadius="8px" 
+          bg="white" 
+          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+          transition="all 0.3s ease"
+          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+        >
+          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="orange.600">
             {stats.averageCGPA.toFixed(2)}
           </Text>
-          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Average CGPA</Text>
+          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Average CGPA</Text>
         </Box>
       </Box>
 
@@ -780,15 +872,16 @@ const AdminDashboard = () => {
       <Box 
         bg="white" 
         borderRadius="8px" 
-        p={{ base: 2, md: 4 }} 
+        p={{ base: 2, sm: 3, md: 4, lg: 5 }} 
         boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+        overflow="hidden"
       >
-        <Heading size={{ base: "sm", md: "md" }} mb={2} color="gray.800">
+        <Heading size={{ base: "sm", md: "md", lg: "lg" }} mb={{ base: 3, md: 4 }} color="gray.800">
           Student Academic Records (Semester-wise)
         </Heading>
         
         {studentData.length === 0 ? (
-          <Text textAlign="center" color="gray.500" py={8}>
+          <Text textAlign="center" color="gray.500" py={{ base: 6, md: 8 }}>
             No student records found in the database.
           </Text>
         ) : (
@@ -801,19 +894,19 @@ const AdminDashboard = () => {
             position="relative"
             sx={{
               '&::-webkit-scrollbar': {
-                width: '16px',
-                height: '16px',
+                width: { base: '12px', md: '16px' },
+                height: { base: '12px', md: '16px' },
               },
               '&::-webkit-scrollbar-track': {
                 background: '#E2E8F0',
-                borderRadius: '8px',
+                borderRadius: { base: '6px', md: '8px' },
                 border: '2px solid #CBD5E0',
               },
               '&::-webkit-scrollbar-thumb': {
                 background: 'linear-gradient(180deg, #4A5568 0%, #2D3748 100%)',
-                borderRadius: '8px',
+                borderRadius: { base: '6px', md: '8px' },
                 border: '2px solid #CBD5E0',
-                minHeight: '40px',
+                minHeight: { base: '30px', md: '40px' },
               },
               '&::-webkit-scrollbar-thumb:hover': {
                 background: 'linear-gradient(180deg, #2D3748 0%, #1A202C 100%)',
@@ -825,12 +918,20 @@ const AdminDashboard = () => {
               scrollbarColor: '#4A5568 #E2E8F0',
             }}
           >
-            <Table id="student-table" variant="simple" size={{ base: "xs", md: "sm" }} width="100%" minWidth="1600px" fontSize={{ base: "10px", md: "xs" }} style={{ 
-              tableLayout: 'auto',
-              border: '2px solid #2D3748',
-              borderCollapse: 'separate',
-              borderSpacing: '0'
-            }}>
+            <Table 
+              id="student-table" 
+              variant="simple" 
+              size={{ base: "xs", sm: "sm", md: "sm", lg: "md" }} 
+              width="100%" 
+              minWidth={{ base: "1200px", md: "1400px", lg: "1600px" }} 
+              fontSize={{ base: "10px", sm: "11px", md: "xs", lg: "sm" }} 
+              style={{ 
+                tableLayout: 'auto',
+                border: '2px solid #2D3748',
+                borderCollapse: 'separate',
+                borderSpacing: '0'
+              }}
+            >
               <Thead position="sticky" top={0} zIndex={1} bgColor="white" style={{ border: '2px solid #2D3748' }}>
                 <Tr style={{ border: '2px solid #2D3748' }}>
                   <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="50px" style={{ 
