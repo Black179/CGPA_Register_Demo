@@ -82,11 +82,43 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchStudents();
+    
+    // Add real-time data refresh for mobile
+    const interval = setInterval(() => {
+      fetchStudents();
+    }, 30000); // Refresh every 30 seconds for real-time updates
+    
+    // Add visibility change listener for mobile
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchStudents(); // Refresh when app becomes visible
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Add focus listener for mobile
+    const handleFocus = () => {
+      fetchStudents(); // Refresh when app gains focus
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const fetchStudents = async () => {
     try {
-      setLoading(true);
+      // Don't show loading for background refreshes to avoid mobile UI flicker
+      const isBackgroundRefresh = arguments.callee.caller && arguments.callee.caller.name === 'handleVisibilityChange';
+      if (!isBackgroundRefresh) {
+        setLoading(true);
+      }
+      
       console.log('Fetching students from API...');
       
       // Use environment variable for API endpoint
@@ -96,7 +128,19 @@ const AdminDashboard = () => {
       
       console.log('Using API endpoint:', apiEndpoint);
       
-      const response = await fetch(apiEndpoint);
+      // Add mobile-specific headers and timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for mobile
+      
+      const response = await fetch(apiEndpoint, {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -107,8 +151,8 @@ const AdminDashboard = () => {
       setStudents(data);
       console.log('Students set:', data.length);
       
-      // Show success message for debugging
-      if (data.length === 0) {
+      // Show success message only for manual refreshes, not background ones
+      if (!isBackgroundRefresh && data.length === 0) {
         toast({
           title: 'No Data Found',
           description: 'No student records found in the database. Try adding test data.',
@@ -126,15 +170,20 @@ const AdminDashboard = () => {
         userAgent: navigator.userAgent
       });
       
-      toast({
-        title: 'Connection Error',
-        description: `Failed to fetch student data: ${error.message}. Check if server is running.`,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Don't show error toast for background refreshes or abort errors
+      if (error.name !== 'AbortError' && !isBackgroundRefresh) {
+        toast({
+          title: 'Connection Error',
+          description: `Failed to fetch student data: ${error.message}. Check if server is running.`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!isBackgroundRefresh) {
+        setLoading(false);
+      }
     }
   };
 
@@ -317,6 +366,15 @@ const AdminDashboard = () => {
   // Export to Excel function
   const exportToExcel = async () => {
     try {
+      // Show loading toast for mobile feedback
+      toast({
+        title: 'Preparing Excel',
+        description: 'Generating Excel file with student records...',
+        status: 'info',
+        duration: 1000,
+        isClosable: true,
+      });
+
       // Build dynamic headers based on actual semesters
       const headers = {
         'S.No': 'sno',
@@ -339,7 +397,7 @@ const AdminDashboard = () => {
       headers['Total Arrear (Overall)'] = 'overall.totalArrears';
       headers['Signature'] = 'signature';
       
-      // Create heading data
+      // Create heading data with proper formatting for mobile
       const headingData = [
         ['PSNA College of Engineering & Technology, Dindigul – 624622'],
         ['(An Autonomous Institution, Affiliated to Anna University, Chennai)'],
@@ -350,7 +408,7 @@ const AdminDashboard = () => {
         []
       ];
       
-      // Create student data rows
+      // Create student data rows with real-time data
       const studentRows = studentData.map(student => {
         const row = {
           'S.No': student.sno,
@@ -377,11 +435,8 @@ const AdminDashboard = () => {
         return row;
       });
       
-      // Combine heading and student data
-      const allData = [...headingData, ...studentRows];
-      
-      // Create worksheet with combined data
-      const ws = XLSX.utils.json_to_sheet(allData, { skipHeader: true });
+      // Create worksheet with heading and data
+      const ws = XLSX.utils.aoa_to_sheet(headingData);
       
       // Add headers as a separate row
       const headerRow = Object.keys(headers);
@@ -389,14 +444,50 @@ const AdminDashboard = () => {
       
       // Add student data
       XLSX.utils.sheet_add_json(ws, studentRows, { origin: -1, skipHeader: true });
+      
+      // Set column widths for better mobile viewing
+      const colWidths = [
+        { wch: 8 },  // S.No
+        { wch: 12 }, // SECTION
+        { wch: 15 }, // REG NO
+        { wch: 25 }, // NAME
+      ];
+      
+      // Add dynamic column widths for semesters
+      for (let sem = 1; sem <= maxSemesters; sem++) {
+        colWidths.push({ wch: 15 }); // ARREAR COUNT
+        colWidths.push({ wch: 15 }); // TOTAL ARREAR
+        colWidths.push({ wch: 10 }); // TOT
+        colWidths.push({ wch: 10 }); // SGPA
+      }
+      
+      // Add overall column widths
+      colWidths.push({ wch: 10 }); // CGPA
+      colWidths.push({ wch: 10 }); // TOT
+      colWidths.push({ wch: 15 }); // Total Arrear
+      colWidths.push({ wch: 15 }); // Signature
+      
+      ws['!cols'] = colWidths;
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Student Records');
-      XLSX.writeFile(wb, 'CGPA_Student_Records.xlsx');
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `CGPA_Student_Records_${timestamp}.xlsx`;
+      
+      // Use mobile-compatible download method
+      if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
+        // Mobile-specific download
+        XLSX.writeFile(wb, filename);
+      } else {
+        // Desktop download
+        XLSX.writeFile(wb, filename);
+      }
       
       toast({
         title: 'Success',
-        description: 'Excel file exported successfully!',
+        description: 'Excel file downloaded successfully!',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -404,10 +495,10 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to export Excel file',
+        title: 'Export Error',
+        description: 'Failed to export Excel file: ' + error.message,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
@@ -416,6 +507,15 @@ const AdminDashboard = () => {
   // Export to PDF function
   const exportToPDF = async () => {
     try {
+      // Show loading toast for mobile feedback
+      toast({
+        title: 'Preparing PDF',
+        description: 'Generating PDF with student records...',
+        status: 'info',
+        duration: 1000,
+        isClosable: true,
+      });
+
       const element = document.getElementById('student-table');
       if (!element) {
         toast({
@@ -433,6 +533,8 @@ const AdminDashboard = () => {
       tempContainer.style.padding = '20px';
       tempContainer.style.backgroundColor = 'white';
       tempContainer.style.fontFamily = 'Arial, sans-serif';
+      tempContainer.style.width = '100%';
+      tempContainer.style.overflow = 'hidden';
       
       // Add college heading
       const heading = document.createElement('div');
@@ -457,8 +559,22 @@ const AdminDashboard = () => {
       `;
       tempContainer.appendChild(heading);
       
-      // Clone the table
+      // Clone the table and make it mobile-friendly for PDF
       const tableClone = element.cloneNode(true);
+      tableClone.style.width = '100%';
+      tableClone.style.fontSize = '12px';
+      tableClone.style.tableLayout = 'fixed';
+      
+      // Adjust table for mobile PDF generation
+      const cells = tableClone.querySelectorAll('th, td');
+      cells.forEach(cell => {
+        cell.style.fontSize = '10px';
+        cell.style.padding = '4px';
+        cell.style.whiteSpace = 'nowrap';
+        cell.style.overflow = 'hidden';
+        cell.style.textOverflow = 'ellipsis';
+      });
+      
       tempContainer.appendChild(tableClone);
       
       // Temporarily add to body for rendering
@@ -470,20 +586,32 @@ const AdminDashboard = () => {
         thead.style.position = 'static';
       }
 
+      // Mobile-optimized canvas settings
       const canvas = await html2canvas(tempContainer, {
-        scale: 2,
+        scale: 1.5, // Reduced scale for mobile performance
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         width: tempContainer.scrollWidth,
-        height: tempContainer.scrollHeight
+        height: tempContainer.scrollHeight,
+        logging: false, // Disable logging for mobile performance
+        removeContainer: true // Clean up automatically
       });
       
       // Remove temporary container
-      document.body.removeChild(tempContainer);
+      if (document.body.contains(tempContainer)) {
+        document.body.removeChild(tempContainer);
+      }
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png', 0.8); // Reduced quality for mobile
+      
+      // Create PDF with mobile-friendly settings
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+        compress: true // Compress for mobile
+      });
       
       const imgWidth = 280;
       const pageHeight = 210;
@@ -501,11 +629,35 @@ const AdminDashboard = () => {
         heightLeft -= pageHeight;
       }
 
-      pdf.save('CGPA_Student_Records.pdf');
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `CGPA_Student_Records_${timestamp}.pdf`;
+      
+      // Mobile-compatible PDF download
+      if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
+        // For mobile devices, use blob URL
+        const pdfBlob = pdf.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up blob URL
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } else {
+        // Desktop download
+        pdf.save(filename);
+      }
       
       toast({
         title: 'Success',
-        description: 'PDF file exported successfully!',
+        description: 'PDF file downloaded successfully!',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -513,10 +665,10 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error exporting to PDF:', error);
       toast({
-        title: 'Error',
+        title: 'Export Error',
         description: 'Failed to export PDF file: ' + error.message,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
