@@ -150,7 +150,7 @@ const AdminDashboard = () => {
       });
     }).length;
     
-    // Calculate Highest CGPA
+    // Calculate Highest CGPA and Average CGPA
     const studentCGPAs = students.map(student => {
       if (!student?.semesters || student.semesters.length === 0) return 0;
       const allSubjects = student.semesters.flatMap(sem => sem.subjects || []);
@@ -160,8 +160,9 @@ const AdminDashboard = () => {
     }).filter(cgpa => cgpa > 0);
     
     const highestCGPA = studentCGPAs.length > 0 ? Math.max(...studentCGPAs) : 0;
+    const averageCGPA = studentCGPAs.length > 0 ? studentCGPAs.reduce((sum, cgpa) => sum + cgpa, 0) / studentCGPAs.length : 0;
 
-    return { totalStudents, arrearHavingStudents, highestCGPA };
+    return { totalStudents, arrearHavingStudents, highestCGPA, averageCGPA };
   };
 
   // Function to get the maximum number of semesters across all students
@@ -403,7 +404,60 @@ const AdminDashboard = () => {
         return;
       }
 
-      const canvas = await html2canvas(element);
+      // Create a temporary container with heading and table
+      const tempContainer = document.createElement('div');
+      tempContainer.style.padding = '20px';
+      tempContainer.style.backgroundColor = 'white';
+      tempContainer.style.fontFamily = 'Arial, sans-serif';
+      
+      // Add college heading
+      const heading = document.createElement('div');
+      heading.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="margin: 5px 0; font-size: 16px; font-weight: bold;">
+            PSNA College of Engineering & Technology, Dindigul – 624622
+          </h2>
+          <p style="margin: 3px 0; font-size: 14px; font-style: italic;">
+            (An Autonomous Institution, Affiliated to Anna University, Chennai)
+          </p>
+          <p style="margin: 3px 0; font-size: 14px;">
+            Department of Electronics Engineering (VLSI Design and Technology)
+          </p>
+          <h3 style="margin: 8px 0; font-size: 15px; font-weight: bold;">
+            I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)
+          </h3>
+          <p style="margin: 3px 0; font-size: 14px; font-weight: bold;">
+            CGPA Calculation Upto II Semester
+          </p>
+        </div>
+      `;
+      tempContainer.appendChild(heading);
+      
+      // Clone the table
+      const tableClone = element.cloneNode(true);
+      tempContainer.appendChild(tableClone);
+      
+      // Temporarily add to body for rendering
+      document.body.appendChild(tempContainer);
+      
+      // Temporarily remove sticky positioning for PDF export
+      const thead = tableClone.querySelector('thead');
+      if (thead) {
+        thead.style.position = 'static';
+      }
+
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: tempContainer.scrollWidth,
+        height: tempContainer.scrollHeight
+      });
+      
+      // Remove temporary container
+      document.body.removeChild(tempContainer);
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
       
@@ -436,7 +490,7 @@ const AdminDashboard = () => {
       console.error('Error exporting to PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to export PDF file',
+        description: 'Failed to export PDF file: ' + error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -523,7 +577,7 @@ const AdminDashboard = () => {
       </HStack>
 
       {/* Statistics Cards */}
-      <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={4} mb={6}>
+      <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={4} mb={6}>
         <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
           <Text fontSize="lg" fontWeight="bold" color="blue.600">
             {stats.totalStudents}
@@ -543,6 +597,13 @@ const AdminDashboard = () => {
             {stats.highestCGPA.toFixed(2)}
           </Text>
           <Text fontSize="sm" color="gray.600">Highest CGPA</Text>
+        </Box>
+        
+        <Box p={4} borderRadius="8px" bg="white" boxShadow="0 2px 4px rgba(0,0,0,0.1)">
+          <Text fontSize="lg" fontWeight="bold" color="orange.600">
+            {stats.averageCGPA.toFixed(2)}
+          </Text>
+          <Text fontSize="sm" color="gray.600">Average CGPA</Text>
         </Box>
       </Box>
 
