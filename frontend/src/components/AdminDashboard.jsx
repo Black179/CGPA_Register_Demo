@@ -220,18 +220,11 @@ const AdminDashboard = () => {
       });
     }).length;
     
-    // Calculate Average CGPA
-    const studentCGPAs = students.map(student => {
-      if (!student?.semesters || student.semesters.length === 0) return 0;
-      const allSubjects = student.semesters.flatMap(sem => sem.subjects || []);
-      const totalCredits = allSubjects.reduce((sum, subject) => sum + subject.credits, 0);
-      const weightedSum = allSubjects.reduce((sum, subject) => sum + (subject.gradePoint * subject.credits), 0);
-      return totalCredits > 0 ? weightedSum / totalCredits : 0;
-    }).filter(cgpa => cgpa > 0);
-    
-    const averageCGPA = studentCGPAs.length > 0 ? studentCGPAs.reduce((sum, cgpa) => sum + cgpa, 0) / studentCGPAs.length : 0;
+    // Calculate Pass Percentage (students without arrears / total students * 100)
+    const studentsWithoutArrears = totalStudents - arrearHavingStudents;
+    const passPercentage = totalStudents > 0 ? (studentsWithoutArrears / totalStudents) * 100 : 0;
 
-    return { totalStudents, arrearHavingStudents, averageCGPA };
+    return { totalStudents, arrearHavingStudents, passPercentage };
   };
 
   // Function to get the maximum number of semesters across all students
@@ -938,9 +931,9 @@ const AdminDashboard = () => {
           _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
         >
           <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="orange.600">
-            {stats.averageCGPA.toFixed(2)}
+            {stats.passPercentage.toFixed(1)}%
           </Text>
-          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Average CGPA</Text>
+          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Pass Percentage</Text>
         </Box>
       </Box>
 

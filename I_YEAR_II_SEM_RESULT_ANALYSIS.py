@@ -79,7 +79,7 @@ class PDFGenerator:
         elements.append(Spacer(1, 10))
         elements.append(footer)
 
-    def _create_result_table(self, data):
+    def _create_result_table(self, data, mobile_friendly=False):
         """Create the main results table"""
         # Define table headers
         headers = [
@@ -115,41 +115,75 @@ class PDFGenerator:
         
         # Create and style the table
         table = Table(table_data, repeatRows=1)
-        table.setStyle(TableStyle([
-            # Header
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            
-            # Grid
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            
-            # Row colors
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F0F0')]),
-            
-            # Cell padding
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
         
-        # Auto-adjust column widths
-        col_widths = [40, 40, 80, 120] + [60] * 11
+        if mobile_friendly:
+            # Mobile-friendly styling - smaller fonts and padding
+            table.setStyle(TableStyle([
+                # Header
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 6),  # Smaller font for mobile
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                
+                # Grid
+                ('GRID', (0, 0), (-1, -1), 0.3, colors.black),  # Thinner grid
+                
+                # Row colors
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F0F0')]),
+                
+                # Cell padding - reduced for mobile
+                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                
+                # Smaller row data font
+                ('FONTSIZE', (0, 1), (-1, -1), 5),
+            ]))
+            
+            # Adjust column widths for mobile portrait
+            col_widths = [25, 25, 50, 70] + [40] * 11
+        else:
+            # Original styling for desktop
+            table.setStyle(TableStyle([
+                # Header
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                
+                # Grid
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                
+                # Row colors
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F0F0')]),
+                
+                # Cell padding
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            
+            # Auto-adjust column widths
+            col_widths = [40, 40, 80, 120] + [60] * 11
+        
         table._argW = col_widths
         
         return table
 
-    def generate_pdf(self, student_data, filename=None):
+    def generate_pdf(self, student_data, filename=None, mobile_friendly=False):
         """
         Generate PDF from CGPA calculator data
         
         Args:
             student_data (list): List of student result dictionaries
             filename (str, optional): Output filename. Defaults to timestamp.
+            mobile_friendly (bool): Generate mobile-optimized PDF
             
         Returns:
             str: Path to generated PDF
@@ -160,27 +194,38 @@ class PDFGenerator:
         # Create output filename
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"I_YEAR_II_SEM_RESULT_ANALYSIS_{timestamp}.pdf"
+            suffix = "_mobile" if mobile_friendly else ""
+            filename = f"I_YEAR_II_SEM_RESULT_ANALYSIS_{suffix}{timestamp}.pdf"
         elif not filename.lower().endswith('.pdf'):
             filename += '.pdf'
             
         output_path = os.path.join(self.output_dir, filename)
         
-        # Create PDF document
-        doc = SimpleDocTemplate(
-            output_path,
-            pagesize=landscape(letter),
-            leftMargin=20,
-            rightMargin=20,
-            topMargin=40,
-            bottomMargin=40
-        )
+        # Create PDF document with mobile-friendly settings
+        if mobile_friendly:
+            doc = SimpleDocTemplate(
+                output_path,
+                pagesize=letter,  # Portrait for mobile
+                leftMargin=15,
+                rightMargin=15,
+                topMargin=30,
+                bottomMargin=30
+            )
+        else:
+            doc = SimpleDocTemplate(
+                output_path,
+                pagesize=landscape(letter),
+                leftMargin=20,
+                rightMargin=20,
+                topMargin=40,
+                bottomMargin=40
+            )
         
         # Build PDF elements
         elements = self._create_header()
         
         # Add result table
-        table = self._create_result_table(student_data)
+        table = self._create_result_table(student_data, mobile_friendly)
         elements.append(table)
         
         # Add footer
