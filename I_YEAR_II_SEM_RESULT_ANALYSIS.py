@@ -40,18 +40,29 @@ class PDFGenerator:
         elements = []
         
         # College Title
-        title = Paragraph("PSNA College of Engineering & Technology, Dindigul – 624622", 
-                         self.styles['Title'])
+        title = Paragraph(
+            "PSNA COLLEGE OF ENGINEERING AND TECHNOLOGY, DINDIGUL - 624 622",
+            self.styles['Title']
+        )
         elements.append(title)
         
         # Department
-        dept = Paragraph("Department of Electronics Engineering (VLSI Design and Technology)",
-                        self.styles['Subtitle'])
+        dept = Paragraph(
+            "DEPARTMENT OF ELECTRONICS AND COMMUNICATION ENGINEERING",
+            self.styles['Subtitle']
+        )
         elements.append(dept)
+        
+        # Affiliated to
+        affil = Paragraph(
+            "(An Autonomous Institution Affiliated to Anna University, Chennai)",
+            self.styles['Subtitle']
+        )
+        elements.append(affil)
         
         # Result Title
         result_title = Paragraph(
-            "I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)",
+            "I YEAR II SEMESTER RESULT ANALYSIS (2024-2028 BATCH)",
             self.styles['Title']
         )
         elements.append(result_title)
