@@ -172,6 +172,7 @@ const AdminDashboard = () => {
           isClosable: true,
         });
       }
+      return data; // Return data for use in export functions
     } catch (error) {
       // Clear timeout if it exists
       clearTimeout(timeoutId);
@@ -193,11 +194,18 @@ const AdminDashboard = () => {
           isClosable: true,
         });
       }
+      return []; // Return empty array on error
     } finally {
       if (!isBackgroundRefresh) {
         setLoading(false);
       }
     }
+  };
+
+  // Refresh data function specifically for exports
+  const refreshDataForExport = async () => {
+    const freshData = await fetchStudents(false);
+    return freshData;
   };
 
   const calculateStats = () => {
@@ -382,11 +390,29 @@ const AdminDashboard = () => {
       // Show loading toast for mobile feedback
       toast({
         title: 'Preparing Excel',
-        description: 'Generating Excel file with student records...',
+        description: 'Fetching latest data and generating Excel file...',
         status: 'info',
         duration: 1000,
         isClosable: true,
       });
+
+      // Refresh data to ensure we have all records
+      const freshStudents = await refreshDataForExport();
+      if (freshStudents.length === 0) {
+        toast({
+          title: 'No Data',
+          description: 'No student data available to export',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      console.log(`Exporting ${freshStudents.length} student records to Excel...`);
+      
+      // Process fresh data for export
+      const freshStudentData = getStudentSemesterData();
 
       // Build dynamic headers based on actual semesters
       const headers = {
@@ -425,8 +451,8 @@ const AdminDashboard = () => {
         []  // Empty row for headers
       ];
       
-      // Create student data rows with real-time data
-      const studentRows = studentData.map(student => {
+      // Create student data rows with fresh data
+      const studentRows = freshStudentData.map(student => {
         const row = {
           'S.No': student.sno,
           'SECTION': student.section,
@@ -564,25 +590,28 @@ const AdminDashboard = () => {
       // Show loading toast for mobile feedback
       toast({
         title: 'Preparing PDF',
-        description: 'Generating PDF with student records...',
+        description: 'Fetching latest data and generating PDF...',
         status: 'info',
         duration: 1000,
         isClosable: true,
       });
 
-      const element = document.getElementById('student-table');
-      if (!element) {
+      // Refresh data to ensure we have all records
+      const freshStudents = await refreshDataForExport();
+      if (freshStudents.length === 0) {
         toast({
-          title: 'Error',
-          description: 'Table not found for export',
-          status: 'error',
+          title: 'No Data',
+          description: 'No student data available to export',
+          status: 'warning',
           duration: 3000,
           isClosable: true,
         });
         return;
       }
 
-      // Create a temporary container with heading and table
+      console.log(`Exporting ${freshStudents.length} student records to PDF...`);
+
+      // Create a temporary container with heading and dynamically generated table
       const tempContainer = document.createElement('div');
       
       // Responsive design for both laptop and mobile
@@ -620,32 +649,63 @@ const AdminDashboard = () => {
       `;
       tempContainer.appendChild(heading);
       
-      // Clone the table and make it mobile-friendly for PDF
-      const tableClone = element.cloneNode(true);
-      tableClone.style.width = '100%';
-      tableClone.style.fontSize = '12px';
-      tableClone.style.tableLayout = 'fixed';
+      // Generate complete table dynamically with all data
+      const tableHtml = `
+        <table style="width: 100%; font-size: 12px; border-collapse: collapse; border: 2px solid #2D3748;">
+          <thead style="position: static; background-color: white; border: 2px solid #2D3748;">
+            <tr style="border: 2px solid #2D3748;">
+              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 50px;">S.No</th>
+              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 80px;">SECTION</th>
+              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">REG NO</th>
+              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 150px;">NAME</th>
+              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => 
+                `<th colspan="4" style="border: 2px solid #2D3748; background-color: ${semNum % 2 === 0 ? '#f0fff4' : '#ebf8ff'}; font-weight: bold; text-align: center; padding: 4px;">SEM ${semNum}</th>`
+              ).join('')}
+              <th colspan="3" style="border: 2px solid #2D3748; background-color: '#faf5ff'; font-weight: bold; text-align: center; padding: 4px;">Overall</th>
+              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">Signature</th>
+            </tr>
+            <tr style="border: 2px solid #2D3748;">
+              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => 
+                `<th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">ARREAR COUNT</th>
+                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">TOTAL ARREAR</th>
+                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
+                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">SGPA</th>`
+              ).join('')}
+              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">CGPA</th>
+              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
+              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">Total Arrear</th>
+            </tr>
+          </thead>
+          <tbody style="border: 2px solid #2D3748;">
+            ${freshStudentData.map(student => `
+              <tr style="border: 2px solid #2D3748;">
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.sno}</td>
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.section}</td>
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.registerNo}</td>
+                <td style="border: 1px solid #CBD5E0; padding: 4px; font-size: 10px;">${student.name}</td>
+                ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
+                  const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
+                  return `
+                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsCount}</td>
+                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsTotal}</td>
+                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.total}</td>
+                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.sgpa.toFixed(2)}</td>
+                  `;
+                }).join('')}
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.cgpa.toFixed(2)}</td>
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.total}</td>
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.totalArrears}</td>
+                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;"></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
       
-      // Adjust table for mobile PDF generation
-      const cells = tableClone.querySelectorAll('th, td');
-      cells.forEach(cell => {
-        cell.style.fontSize = '10px';
-        cell.style.padding = '4px';
-        cell.style.whiteSpace = 'nowrap';
-        cell.style.overflow = 'hidden';
-        cell.style.textOverflow = 'ellipsis';
-      });
-      
-      tempContainer.appendChild(tableClone);
+      tempContainer.innerHTML += tableHtml;
       
       // Temporarily add to body for rendering
       document.body.appendChild(tempContainer);
-      
-      // Temporarily remove sticky positioning for PDF export
-      const thead = tableClone.querySelector('thead');
-      if (thead) {
-        thead.style.position = 'static';
-      }
 
       // Mobile-optimized canvas settings
       const canvas = await html2canvas(tempContainer, {
