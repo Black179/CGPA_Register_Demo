@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, Button, FormControl, FormLabel, Select, Table, Thead, Tbody, Tr, Th, Td, 
+import {
+  Box, Button, FormControl, FormLabel, Select, Table, Thead, Tbody, Tr, Th, Td,
   VStack, Heading, useToast, HStack, Text, Badge
 } from '@chakra-ui/react';
 import { SEMESTER_SUBJECTS, GRADES } from '../constants/constants';
@@ -44,7 +44,7 @@ const SemesterGrades = () => {
       // Check if current semester grades are complete
       const semSubjects = SEMESTER_SUBJECTS[currentSemester] || [];
       const isCurrentSemComplete = semSubjects.every(subj => grades[`${currentSemester}-${subj.code}`]);
-      
+
       if (!isCurrentSemComplete) {
         toast({
           title: 'Incomplete Grades',
@@ -61,14 +61,14 @@ const SemesterGrades = () => {
       element.style.padding = '20px';
       element.style.fontFamily = 'Arial, sans-serif';
       element.style.backgroundColor = 'white';
-      
+
       // Add header
       const header = document.createElement('h2');
       header.textContent = `Grade Report - Semester ${currentSemester}`;
       header.style.textAlign = 'center';
       header.style.marginBottom = '20px';
       element.appendChild(header);
-      
+
       // Add student info
       const studentInfo = document.createElement('div');
       studentInfo.innerHTML = `
@@ -79,13 +79,13 @@ const SemesterGrades = () => {
         <hr style="margin: 20px 0;">
       `;
       element.appendChild(studentInfo);
-      
+
       // Create table
       const table = document.createElement('table');
       table.style.width = '100%';
       table.style.borderCollapse = 'collapse';
       table.style.marginBottom = '20px';
-      
+
       // Add table header
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
@@ -99,13 +99,13 @@ const SemesterGrades = () => {
       });
       thead.appendChild(headerRow);
       table.appendChild(thead);
-      
+
       // Add table body
       const tbody = document.createElement('tbody');
       semSubjects.forEach(subject => {
         const grade = grades[`${currentSemester}-${subject.code}`] || 'N/A';
         const row = document.createElement('tr');
-        
+
         const cells = [subject.code, subject.name, subject.credits, grade];
         cells.forEach(text => {
           const td = document.createElement('td');
@@ -119,7 +119,7 @@ const SemesterGrades = () => {
       });
       table.appendChild(tbody);
       element.appendChild(table);
-      
+
       // Calculate and add SGPA
       const subjects = semSubjects.map(subj => {
         const grade = grades[`${currentSemester}-${subj.code}`] || 'U';
@@ -129,11 +129,11 @@ const SemesterGrades = () => {
           gradePoint: gradeObj.points
         };
       });
-      
+
       const totalCredits = subjects.reduce((sum, subj) => sum + subj.credits, 0);
       const totalPoints = subjects.reduce((sum, subj) => sum + (subj.credits * subj.gradePoint), 0);
       const sgpa = parseFloat((totalPoints / totalCredits).toFixed(2));
-      
+
       const sgpaInfo = document.createElement('div');
       sgpaInfo.innerHTML = `
         <p><strong>SGPA for Semester ${currentSemester}:</strong> ${sgpa}</p>
@@ -141,15 +141,15 @@ const SemesterGrades = () => {
         <p style="margin-top: 30px; text-align: center; font-style: italic;">Generated on ${new Date().toLocaleDateString()}</p>
       `;
       element.appendChild(sgpaInfo);
-      
+
       // Temporarily add to body
       document.body.appendChild(element);
-      
+
       // Generate PDF
       const canvas = await html2canvas(element);
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
+
       const imgWidth = 210;
       const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -167,10 +167,10 @@ const SemesterGrades = () => {
       }
 
       pdf.save(`Semester_${currentSemester}_Grades.pdf`);
-      
+
       // Remove temporary element
       document.body.removeChild(element);
-      
+
       toast({
         title: 'PDF Downloaded',
         description: `Semester ${currentSemester} grades PDF downloaded successfully!`,
@@ -211,11 +211,11 @@ const SemesterGrades = () => {
     const semestersData = Array.from({ length: userData.totalSemesters }, (_, i) => {
       const sem = i + 1;
       const semSubjects = SEMESTER_SUBJECTS[sem] || [];
-      
+
       const subjects = semSubjects.map(subj => {
         const grade = grades[`${sem}-${subj.code}`] || 'U';
         const gradeObj = GRADES.find(g => g.value === grade) || GRADES[GRADES.length - 1];
-        
+
         return {
           code: subj.code,
           name: subj.name,
@@ -243,13 +243,14 @@ const SemesterGrades = () => {
 
     try {
       // Save to backend database
-      const apiEndpoint = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // Use empty string as fallback for relative path (ngrok/production)
+      const apiEndpoint = import.meta.env.VITE_API_URL || '';
       const response = await axios.post(`${apiEndpoint}/api/user`, completeData);
-      
-      if (response.status === 201) {
+
+      if (response.status === 201 || response.status === 200) {
         // Also save to localStorage for offline access
         localStorage.setItem('userData', JSON.stringify(completeData));
-        
+
         toast({
           title: 'Data Saved Successfully',
           description: 'Your grades have been saved to the database!',
@@ -257,15 +258,15 @@ const SemesterGrades = () => {
           duration: 3000,
           isClosable: true,
         });
-        
+
         navigate('/result');
       }
     } catch (error) {
       console.error('Error saving data to database:', error);
-      
+
       // Fallback to localStorage if backend fails
       localStorage.setItem('userData', JSON.stringify(completeData));
-      
+
       toast({
         title: 'Backend Error',
         description: 'Saved locally only. Database connection failed.',
@@ -273,7 +274,7 @@ const SemesterGrades = () => {
         duration: 3000,
         isClosable: true,
       });
-      
+
       navigate('/result');
     }
   };
@@ -291,7 +292,7 @@ const SemesterGrades = () => {
         {Array.from({ length: userData.totalSemesters }, (_, i) => i + 1).map(sem => {
           const progress = calculateSemesterProgress(sem);
           const isCompleted = progress === 100;
-          
+
           return (
             <VStack key={sem} spacing={1}>
               <Button
@@ -310,10 +311,10 @@ const SemesterGrades = () => {
       </HStack>
 
       {/* Enhanced subject table with scroll bars */}
-      <Box 
-        overflowX='auto' 
-        borderWidth='1px' 
-        borderRadius='md' 
+      <Box
+        overflowX='auto'
+        borderWidth='1px'
+        borderRadius='md'
         borderColor='gray.200'
         boxShadow='sm'
         maxH='60vh'
@@ -370,7 +371,7 @@ const SemesterGrades = () => {
             {(SEMESTER_SUBJECTS[currentSemester] || []).map(subject => {
               const grade = grades[`${currentSemester}-${subject.code}`];
               const isCompleted = !!grade;
-              
+
               return (
                 <Tr key={subject.code}>
                   <Td>{subject.code}</Td>
@@ -404,15 +405,15 @@ const SemesterGrades = () => {
         </Table>
       </Box>
 
-      <VStack 
-        spacing={4} 
+      <VStack
+        spacing={4}
         mt={6}
         direction={{ base: 'column', md: 'row' }}
         align={{ base: 'stretch', md: 'center' }}
         justify={{ base: 'center', md: 'space-between' }}
         width={{ base: 'full', md: 'auto' }}
       >
-        <Button 
+        <Button
           onClick={() => navigate('/')}
           width={{ base: 'full', md: 'auto' }}
           size={{ base: 'md', md: 'md' }}
@@ -420,8 +421,8 @@ const SemesterGrades = () => {
         >
           Back
         </Button>
-        <Button 
-          colorScheme='blue' 
+        <Button
+          colorScheme='blue'
           onClick={handleSubmit}
           isDisabled={
             !(SEMESTER_SUBJECTS[currentSemester] || []).every(

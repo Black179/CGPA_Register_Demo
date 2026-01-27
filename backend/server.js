@@ -8,38 +8,17 @@ const Student = require('./models/Student');
 const app = express();
 
 // Middleware
+// Add detailed logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path} Origin:${req.headers.origin} Host:${req.headers.host}`);
+  next();
+});
+
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Allowed origins
-    const allowedOrigins = [
-      'http://localhost:5173', // Local development
-      'http://localhost:3000', // Alternative local development
-      'https://cgpa-register-demo-5oeq.vercel.app', // Production Vercel URL
-      'https://cgpa-register-demo-01.vercel.app', // Specific production Vercel URL
-      'https://cgpa-register-demo.onrender.com', // Backend URL for testing
-      // Allow any subdomain of vercel.app for mobile compatibility
-      /^https:\/\/.*\.vercel\.app$/
-    ];
-    
-    if (allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return allowedOrigin === origin;
-    })) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow any origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'cache-control', 'pragma'],
-  optionsSuccessStatus: 200
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'cache-control', 'pragma']
 }));
 
 // Mobile-friendly middleware
@@ -47,17 +26,17 @@ app.use((req, res, next) => {
   // Log mobile requests for debugging
   const userAgent = req.headers['user-agent'] || '';
   const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-  
+
   if (isMobile) {
     console.log(`Mobile request: ${req.method} ${req.path} from ${userAgent.substring(0, 50)}...`);
   }
-  
+
   // Set mobile-friendly headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  
+
   next();
 });
 
@@ -77,19 +56,19 @@ mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => {
-  console.log('Connected to MongoDB Atlas');
-})
-.catch((error) => {
-  console.error('MongoDB connection error:', error);
-  console.error('Failed to connect to MongoDB Atlas');
-  process.exit(1);
-});
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((error) => {
+    console.error('MongoDB connection error:', error);
+    console.error('Failed to connect to MongoDB Atlas');
+    process.exit(1);
+  });
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     service: 'CGPA Register Backend - MongoDB'
   });
@@ -99,15 +78,15 @@ app.get('/health', (req, res) => {
 app.post('/api/user', async (req, res) => {
   try {
     const userData = req.body;
-    
+
     // Check if student already exists
     const existingStudent = await Student.findOne({ registerNo: userData.registerNo });
-    
+
     if (existingStudent) {
       // Update existing student
       const updatedStudent = await Student.findOneAndUpdate(
         { registerNo: userData.registerNo },
-        { 
+        {
           name: userData.name,
           section: userData.section,
           totalSemesters: userData.totalSemesters,
@@ -115,21 +94,21 @@ app.post('/api/user', async (req, res) => {
         },
         { new: true, upsert: true }
       );
-      
+
       console.log('Student data updated:', userData);
-      res.status(200).json({ 
-        message: 'Student data updated successfully', 
-        data: updatedStudent 
+      res.status(200).json({
+        message: 'Student data updated successfully',
+        data: updatedStudent
       });
     } else {
       // Insert new student data
       const newStudent = new Student(userData);
       const savedStudent = await newStudent.save();
-      
+
       console.log('Student data saved:', userData);
-      res.status(201).json({ 
-        message: 'Student data saved successfully', 
-        data: savedStudent 
+      res.status(201).json({
+        message: 'Student data saved successfully',
+        data: savedStudent
       });
     }
   } catch (error) {
@@ -141,13 +120,13 @@ app.post('/api/user', async (req, res) => {
 app.get('/api/user/:registerNo', async (req, res) => {
   try {
     const { registerNo } = req.params;
-    
+
     const student = await Student.findOne({ registerNo });
-    
+
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
-    
+
     res.json(student);
   } catch (error) {
     console.error('Error fetching user data:', error);
@@ -159,9 +138,9 @@ app.get('/api/user/:registerNo', async (req, res) => {
 app.get('/api/admin/students', async (req, res) => {
   try {
     console.log('Fetching all students...');
-    
+
     const students = await Student.find().sort({ createdAt: -1 });
-    
+
     console.log('Students found:', students.length);
     res.json(students);
   } catch (error) {
@@ -174,7 +153,7 @@ app.get('/api/admin/students', async (req, res) => {
 app.post('/api/admin/test-data', async (req, res) => {
   try {
     console.log('Test data endpoint called');
-    
+
     const testStudent = {
       name: 'John Doe',
       registerNo: 'REG2024001',
@@ -208,7 +187,7 @@ app.post('/api/admin/test-data', async (req, res) => {
 
     const newStudent = new Student(testStudent);
     const savedStudent = await newStudent.save();
-    
+
     console.log('Test data inserted successfully');
     res.status(201).json({ message: 'Test data inserted successfully', data: savedStudent });
   } catch (error) {
@@ -222,20 +201,29 @@ app.delete('/api/admin/students/:registerNo', async (req, res) => {
   try {
     const { registerNo } = req.params;
     console.log('Attempting to delete student with registerNo:', registerNo);
-    
+
     const student = await Student.findOneAndDelete({ registerNo });
-    
+
     if (!student) {
       console.log('Student not found:', registerNo);
       return res.status(404).json({ error: 'Student not found' });
     }
-    
+
     console.log('Student deleted successfully:', registerNo);
     res.json({ message: 'Student deleted successfully', student });
   } catch (error) {
     console.error('Error in delete endpoint:', error);
     res.status(500).json({ error: 'Failed to delete student: ' + error.message });
   }
+});
+
+// Serve static files from the React frontend app
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Anything that doesn't match the above routes, send back index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 const PORT = process.env.PORT || 5000;

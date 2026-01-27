@@ -6,7 +6,18 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    allowedHosts: ['unparking-unsubtracted-ivy.ngrok-free.dev', '*.ngrok-free.dev']
+    allowedHosts: [
+      'idalia-comfortable-ardis.ngrok-free.dev',
+      'unparking-unsubtracted-ivy.ngrok-free.dev',
+      '.ngrok-free.dev'
+    ],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   build: {
     outDir: 'dist',

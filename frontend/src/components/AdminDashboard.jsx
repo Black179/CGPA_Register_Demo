@@ -58,7 +58,7 @@ const AdminDashboard = () => {
     const styleElement = document.createElement('style');
     styleElement.textContent = globalStyles;
     document.head.appendChild(styleElement);
-    
+
     return () => {
       document.head.removeChild(styleElement);
     };
@@ -84,39 +84,39 @@ const AdminDashboard = () => {
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
-    
+
     const fetchWithMountCheck = async (isBackground = false) => {
       if (isMounted) {
         await fetchStudents(isBackground);
       }
     };
-    
+
     // Initial fetch
     fetchWithMountCheck(false);
-    
+
     // Add real-time data refresh for mobile (reduced frequency to prevent issues)
     intervalId = setInterval(() => {
       fetchWithMountCheck(true); // Background refresh
     }, 60000); // Increased to 60 seconds to reduce server load
-    
+
     // Add visibility change listener for mobile
     const handleVisibilityChange = () => {
       if (!document.hidden && isMounted) {
         fetchWithMountCheck(true); // Background refresh when app becomes visible
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     // Add focus listener for mobile
     const handleFocus = () => {
       if (isMounted) {
         fetchWithMountCheck(true); // Background refresh when app gains focus
       }
     };
-    
+
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       isMounted = false;
       if (intervalId) clearInterval(intervalId);
@@ -129,39 +129,39 @@ const AdminDashboard = () => {
     // Create a new AbortController for each request
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-    
+
     try {
       // Don't show loading for background refreshes to avoid mobile UI flicker
       if (!isBackgroundRefresh) {
         setLoading(true);
       }
-      
+
       console.log('Fetching students from API...');
-      
+
       // Use environment variable for API endpoint
-      const apiEndpoint = import.meta.env.VITE_API_URL 
+      const apiEndpoint = import.meta.env.VITE_API_URL
         ? `${import.meta.env.VITE_API_URL}/api/admin/students`
-        : 'http://localhost:5000/api/admin/students';
-      
+        : '/api/admin/students';
+
       console.log('Using API endpoint:', apiEndpoint);
-      
+
       const response = await fetch(apiEndpoint, {
         signal: controller.signal,
         method: 'GET',
         mode: 'cors'
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Received data:', data);
       setStudents(data);
       console.log('Students set:', data.length);
-      
+
       // Show success message only for manual refreshes, not background ones
       if (!isBackgroundRefresh && data.length === 0) {
         toast({
@@ -176,17 +176,17 @@ const AdminDashboard = () => {
     } catch (error) {
       // Clear timeout if it exists
       clearTimeout(timeoutId);
-      
+
       console.error('Error fetching students:', error);
-      
+
       // Don't show error toast for background refreshes, abort errors, or timeout errors
       if (error.name !== 'AbortError' && !isBackgroundRefresh) {
         // Check if it's a timeout error
         const isTimeout = error.message.includes('timeout') || error.name === 'AbortError';
-        
+
         toast({
           title: isTimeout ? 'Connection Timeout' : 'Connection Error',
-          description: isTimeout 
+          description: isTimeout
             ? 'Server connection timed out. Please check your internet connection and try again.'
             : `Failed to fetch student data: ${error.message}. Check if server is running.`,
           status: 'error',
@@ -210,7 +210,7 @@ const AdminDashboard = () => {
 
   const calculateStats = () => {
     const totalStudents = students.length;
-    
+
     // Calculate Number of Arrear Having Students
     const arrearHavingStudents = students.filter(student => {
       if (!student?.semesters || student.semesters.length === 0) return false;
@@ -219,7 +219,7 @@ const AdminDashboard = () => {
         return semester.subjects.some(subject => subject.gradePoint < 5);
       });
     }).length;
-    
+
     // Calculate Pass Percentage (students without arrears / total students * 100)
     const studentsWithoutArrears = totalStudents - arrearHavingStudents;
     const passPercentage = totalStudents > 0 ? (studentsWithoutArrears / totalStudents) * 100 : 0;
@@ -239,30 +239,30 @@ const AdminDashboard = () => {
   const getStudentSemesterData = () => {
     let studentData = [];
     const maxSemesters = getMaxSemesters();
-    
+
     students.filter(student => student !== null).forEach((student, index) => {
       const semesters = student?.semesters || [];
       const semesterData = {};
-      
+
       // Calculate arrears (grades below 'C' or gradePoint < 5)
       const calculateArrears = (subjects) => {
         if (!subjects) return { count: 0, total: 0 };
         const arrears = subjects.filter(subject => subject.gradePoint < 5);
         return { count: arrears.length, total: arrears.length };
       };
-      
+
       // Calculate totals (sum of credit × gradePoint products)
       const calculateTotal = (subjects) => {
         if (!subjects) return 0;
         return subjects.reduce((sum, subject) => sum + (subject.credits * subject.gradePoint), 0);
       };
-      
+
       // Process each semester dynamically
       for (let semNum = 1; semNum <= maxSemesters; semNum++) {
         const semData = semesters.find(sem => sem.semesterNo === semNum) || {};
         const arrears = calculateArrears(semData.subjects);
         const total = calculateTotal(semData.subjects);
-        
+
         semesterData[`sem${semNum}`] = {
           credit: total || 0,
           arrearsCount: arrears.count,
@@ -271,7 +271,7 @@ const AdminDashboard = () => {
           sgpa: semData.sgpa || 0
         };
       }
-      
+
       // Calculate overall CGPA across all semesters using credit × gradePoint products
       const allSubjects = semesters.flatMap(sem => sem.subjects || []);
       const totalCredits = allSubjects.reduce((sum, subject) => sum + subject.credits, 0);
@@ -279,7 +279,7 @@ const AdminDashboard = () => {
       const overallCGPA = totalCredits > 0 ? weightedSum / totalCredits : 0;
       const overallTotal = Object.values(semesterData).reduce((sum, sem) => sum + sem.total, 0);
       const overallArrears = Object.values(semesterData).reduce((sum, sem) => sum + sem.arrearsCount, 0);
-      
+
       studentData.push({
         sno: index + 1,
         section: student?.section || 'N/A',
@@ -293,12 +293,12 @@ const AdminDashboard = () => {
         }
       });
     });
-    
+
     // Sort student data by register number
     studentData.sort((a, b) => {
       const regA = a.registerNo.toString();
       const regB = b.registerNo.toString();
-      
+
       if (sortBy === 'registerNo') {
         if (sortOrder === 'asc') {
           return regA.localeCompare(regB, undefined, { numeric: true });
@@ -308,12 +308,12 @@ const AdminDashboard = () => {
       }
       return 0;
     });
-    
+
     // Update serial numbers after sorting
     studentData.forEach((student, index) => {
       student.sno = index + 1;
     });
-    
+
     return studentData;
   };
 
@@ -330,12 +330,12 @@ const AdminDashboard = () => {
   const addTestData = async () => {
     try {
       // Use environment variable for API endpoint
-      const apiEndpoint = import.meta.env.VITE_API_URL 
+      const apiEndpoint = import.meta.env.VITE_API_URL
         ? `${import.meta.env.VITE_API_URL}/api/admin/test-data`
-        : 'http://localhost:5000/api/admin/test-data';
-      
+        : '/api/admin/test-data';
+
       console.log('Adding test data using endpoint:', apiEndpoint);
-      
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
@@ -343,7 +343,7 @@ const AdminDashboard = () => {
         }
       });
       const data = await response.json();
-      
+
       if (response.ok) {
         toast({
           title: 'Success',
@@ -403,7 +403,7 @@ const AdminDashboard = () => {
       }
 
       console.log(`Exporting ${freshStudents.length} student records to Excel...`);
-      
+
       // Process fresh data for export
       const freshStudentData = getStudentSemesterData();
 
@@ -414,7 +414,7 @@ const AdminDashboard = () => {
         'REG NO': 'registerNo',
         'NAME': 'name'
       };
-      
+
       // Add semester columns dynamically
       for (let sem = 1; sem <= maxSemesters; sem++) {
         headers[`SEM ${sem} - ARREAR COUNT`] = `sem${sem}.arrearsCount`;
@@ -422,13 +422,13 @@ const AdminDashboard = () => {
         headers[`SEM ${sem} - TOT`] = `sem${sem}.total`;
         headers[`SEM ${sem} - SGPA`] = `sem${sem}.sgpa`;
       }
-      
+
       // Add overall columns
       headers['CGPA (Overall)'] = 'overall.cgpa';
       headers['TOT (Overall)'] = 'overall.total';
       headers['Total Arrear (Overall)'] = 'overall.totalArrears';
       headers['Signature'] = 'signature';
-      
+
       // Create enhanced heading data with proper formatting for mobile and desktop
       const isMobile = window.innerWidth <= 768;
       const headingData = [
@@ -443,7 +443,7 @@ const AdminDashboard = () => {
         [], // Empty row before headers
         []  // Empty row for headers
       ];
-      
+
       // Create student data rows with fresh data
       const studentRows = freshStudentData.map(student => {
         const row = {
@@ -452,7 +452,7 @@ const AdminDashboard = () => {
           'REG NO': student.registerNo,
           'NAME': student.name
         };
-        
+
         // Add semester data dynamically
         for (let sem = 1; sem <= maxSemesters; sem++) {
           const semData = student[`sem${sem}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
@@ -461,26 +461,26 @@ const AdminDashboard = () => {
           row[`SEM ${sem} - TOT`] = semData.total;
           row[`SEM ${sem} - SGPA`] = semData.sgpa;
         }
-        
+
         // Add overall data
         row['CGPA (Overall)'] = student.overall.cgpa;
         row['TOT (Overall)'] = student.overall.total;
         row['Total Arrear (Overall)'] = student.overall.totalArrears;
         row['Signature'] = '';
-        
+
         return row;
       });
-      
+
       // Create worksheet with heading and data
       const ws = XLSX.utils.aoa_to_sheet(headingData);
-      
+
       // Add headers as a separate row
       const headerRow = Object.keys(headers);
       XLSX.utils.sheet_add_aoa(ws, [headerRow], { origin: -1 });
-      
+
       // Add student data
       XLSX.utils.sheet_add_json(ws, studentRows, { origin: -1, skipHeader: true });
-      
+
       // Set responsive column widths for better mobile and desktop viewing
       const baseColumnWidths = isMobile ? [
         { wch: 6 },  // S.No - smaller for mobile
@@ -493,36 +493,36 @@ const AdminDashboard = () => {
         { wch: 15 }, // REG NO - desktop size
         { wch: 25 }, // NAME - desktop size
       ];
-      
+
       // Add dynamic column widths for semesters (responsive)
       const semesterWidth = isMobile ? 12 : 15;
       const smallWidth = isMobile ? 8 : 10;
-      
+
       for (let sem = 1; sem <= maxSemesters; sem++) {
         baseColumnWidths.push({ wch: semesterWidth }); // ARREAR COUNT
         baseColumnWidths.push({ wch: semesterWidth }); // TOTAL ARREAR
         baseColumnWidths.push({ wch: smallWidth });   // TOT
         baseColumnWidths.push({ wch: smallWidth });   // SGPA
       }
-      
+
       // Add overall column widths
       baseColumnWidths.push({ wch: smallWidth });     // CGPA
       baseColumnWidths.push({ wch: smallWidth });     // TOT
       baseColumnWidths.push({ wch: semesterWidth }); // Total Arrear
       baseColumnWidths.push({ wch: semesterWidth }); // Signature
-      
+
       ws['!cols'] = baseColumnWidths;
 
       // Create workbook with responsive sheet name
       const wb = XLSX.utils.book_new();
       const sheetName = isMobile ? 'Mobile_View_Records' : 'Student_Records';
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      
+
       // Generate filename with device indicator and timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       const deviceTag = isMobile ? 'Mobile' : 'Desktop';
       const filename = `CGPA_Records_${deviceTag}_${timestamp}.xlsx`;
-      
+
       // Enhanced mobile and desktop compatible download
       try {
         if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
@@ -533,7 +533,7 @@ const AdminDashboard = () => {
           // Desktop export with full features
           XLSX.writeFile(wb, filename);
         }
-        
+
         toast({
           title: 'Excel Generated Successfully',
           description: `Excel file has been ${isMobile ? 'optimized for mobile view' : 'generated for desktop view'} and downloaded`,
@@ -547,7 +547,7 @@ const AdminDashboard = () => {
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
-        
+
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
@@ -556,7 +556,7 @@ const AdminDashboard = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         toast({
           title: 'Excel Downloaded (Fallback)',
           description: 'File downloaded using alternative method for better compatibility',
@@ -603,48 +603,49 @@ const AdminDashboard = () => {
       }
 
       console.log(`Exporting ${freshStudents.length} student records to PDF...`);
-      
+
       // Process fresh data for export
       const freshStudentData = getStudentSemesterData();
 
       // Create a temporary container with heading and dynamically generated table
       const tempContainer = document.createElement('div');
-      
-      // Responsive design for both laptop and mobile
-      const isMobile = window.innerWidth <= 768;
-      tempContainer.style.padding = isMobile ? '10px' : '20px';
+
+      // Force desktop-like width for PDF generation to ensure table fits comfortably
+      // regardless of the actual device screen size (especially mobile)
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px'; // Hide from view
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '1600px'; // Fixed wide width
+      tempContainer.style.padding = '20px';
       tempContainer.style.backgroundColor = 'white';
       tempContainer.style.fontFamily = 'Arial, sans-serif';
-      tempContainer.style.width = '100%';
-      tempContainer.style.overflow = 'hidden';
-      tempContainer.style.fontSize = isMobile ? '12px' : '14px';
-      
-      // Add college heading with responsive sizing
+      tempContainer.style.fontSize = '14px';
+
       const heading = document.createElement('div');
       heading.innerHTML = `
-        <div style="text-align: center; margin-bottom: ${isMobile ? '15px' : '20px'};">
-          <h2 style="margin: ${isMobile ? '3px' : '5px'} 0; font-size: ${isMobile ? '14px' : '16px'}; font-weight: bold; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="margin: 5px 0; font-size: 24px; font-weight: bold; line-height: 1.2;">
             PSNA College of Engineering & Technology, Dindigul – 624622
           </h2>
-          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; font-style: italic; line-height: 1.1;">
+          <p style="margin: 3px 0; font-size: 16px; font-style: italic; line-height: 1.1;">
             (An Autonomous Institution, Affiliated to Anna University, Chennai)
           </p>
-          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; line-height: 1.1;">
+          <p style="margin: 3px 0; font-size: 16px; line-height: 1.1;">
             Department of Electronics Engineering (VLSI Design and Technology)
           </p>
-          <h3 style="margin: ${isMobile ? '5px' : '8px'} 0; font-size: ${isMobile ? '13px' : '15px'}; font-weight: bold; line-height: 1.2;">
+          <h3 style="margin: 8px 0; font-size: 18px; font-weight: bold; line-height: 1.2;">
             I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)
           </h3>
-          <p style="margin: ${isMobile ? '2px' : '3px'} 0; font-size: ${isMobile ? '11px' : '14px'}; font-weight: bold; line-height: 1.1;">
+          <p style="margin: 3px 0; font-size: 16px; font-weight: bold; line-height: 1.1;">
             CGPA Calculation Upto II Semester
           </p>
-          <p style="margin: ${isMobile ? '8px' : '10px'} 0 0 0; font-size: ${isMobile ? '10px' : '12px'}; color: #666;">
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
             Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
       `;
       tempContainer.appendChild(heading);
-      
+
       // Generate complete table dynamically with all data
       const tableHtml = `
         <table style="width: 100%; font-size: 12px; border-collapse: collapse; border: 2px solid #2D3748;">
@@ -654,19 +655,19 @@ const AdminDashboard = () => {
               <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 80px;">SECTION</th>
               <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">REG NO</th>
               <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 150px;">NAME</th>
-              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => 
-                `<th colspan="4" style="border: 2px solid #2D3748; background-color: ${semNum % 2 === 0 ? '#f0fff4' : '#ebf8ff'}; font-weight: bold; text-align: center; padding: 4px;">SEM ${semNum}</th>`
-              ).join('')}
+              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum =>
+        `<th colspan="4" style="border: 2px solid #2D3748; background-color: ${semNum % 2 === 0 ? '#f0fff4' : '#ebf8ff'}; font-weight: bold; text-align: center; padding: 4px;">SEM ${semNum}</th>`
+      ).join('')}
               <th colspan="3" style="border: 2px solid #2D3748; background-color: '#faf5ff'; font-weight: bold; text-align: center; padding: 4px;">Overall</th>
               <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">Signature</th>
             </tr>
             <tr style="border: 2px solid #2D3748;">
-              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => 
-                `<th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">ARREAR COUNT</th>
+              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum =>
+        `<th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">ARREAR COUNT</th>
                 <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">TOTAL ARREAR</th>
                 <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
                 <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">SGPA</th>`
-              ).join('')}
+      ).join('')}
               <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">CGPA</th>
               <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
               <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">Total Arrear</th>
@@ -680,14 +681,14 @@ const AdminDashboard = () => {
                 <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.registerNo}</td>
                 <td style="border: 1px solid #CBD5E0; padding: 4px; font-size: 10px;">${student.name}</td>
                 ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
-                  const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
-                  return `
+        const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
+        return `
                     <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsCount}</td>
                     <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsTotal}</td>
                     <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.total}</td>
                     <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.sgpa.toFixed(2)}</td>
                   `;
-                }).join('')}
+      }).join('')}
                 <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.cgpa.toFixed(2)}</td>
                 <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.total}</td>
                 <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.totalArrears}</td>
@@ -697,31 +698,31 @@ const AdminDashboard = () => {
           </tbody>
         </table>
       `;
-      
+
       tempContainer.innerHTML += tableHtml;
-      
+
       // Temporarily add to body for rendering
       document.body.appendChild(tempContainer);
 
       // Mobile-optimized canvas settings
       const canvas = await html2canvas(tempContainer, {
-        scale: 1.5, // Reduced scale for mobile performance
+        scale: 2, // Better resolution
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        width: tempContainer.scrollWidth,
-        height: tempContainer.scrollHeight,
-        logging: false, // Disable logging for mobile performance
-        removeContainer: true // Clean up automatically
+        width: 1600, // Match container width
+        windowWidth: 1600, // Simulate desktop viewport
+        logging: false,
+        removeContainer: true
       });
-      
+
       // Remove temporary container
       if (document.body.contains(tempContainer)) {
         document.body.removeChild(tempContainer);
       }
 
       const imgData = canvas.toDataURL('image/png', 0.8); // Reduced quality for mobile
-      
+
       // Create PDF with mobile-friendly settings
       const pdf = new jsPDF({
         orientation: 'landscape',
@@ -729,7 +730,7 @@ const AdminDashboard = () => {
         format: 'a4',
         compress: true // Compress for mobile
       });
-      
+
       const imgWidth = 280;
       const pageHeight = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -749,13 +750,13 @@ const AdminDashboard = () => {
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       const filename = `CGPA_Student_Records_${timestamp}.pdf`;
-      
+
       // Mobile-compatible PDF download
       if (navigator.userAgent.match(/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
         // For mobile devices, use blob URL
         const pdfBlob = pdf.output('blob');
         const blobUrl = URL.createObjectURL(pdfBlob);
-        
+
         // Create download link
         const link = document.createElement('a');
         link.href = blobUrl;
@@ -764,14 +765,14 @@ const AdminDashboard = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         // Clean up blob URL
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       } else {
         // Desktop download
         pdf.save(filename);
       }
-      
+
       toast({
         title: 'Success',
         description: 'PDF file downloaded successfully!',
@@ -796,30 +797,30 @@ const AdminDashboard = () => {
     const isConfirmed = window.confirm(
       `Are you sure you want to delete the student with Register No: ${registerNo}? This action cannot be undone.`
     );
-    
+
     if (!isConfirmed) {
       return;
     }
 
     try {
       // Use environment variable for API endpoint
-      const apiEndpoint = import.meta.env.VITE_API_URL 
+      const apiEndpoint = import.meta.env.VITE_API_URL
         ? `${import.meta.env.VITE_API_URL}/api/admin/students/${registerNo}`
         : 'http://localhost:5000/api/admin/students/${registerNo}';
-      
+
       console.log('Deleting student using endpoint:', apiEndpoint);
-      
+
       const response = await fetch(apiEndpoint, {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Delete response:', data);
-      
+
       toast({
         title: 'Student Deleted',
         description: `Student with Register No: ${registerNo} has been deleted successfully.`,
@@ -827,10 +828,10 @@ const AdminDashboard = () => {
         duration: 3000,
         isClosable: true,
       });
-      
+
       // Refresh the data
       fetchStudents();
-      
+
     } catch (error) {
       console.error('Error deleting student:', error);
       toast({
@@ -856,333 +857,333 @@ const AdminDashboard = () => {
   return (
     <Box minH="100vh" bg="gray.50">
       <VStack spacing={6} p={containerPadding} align="stretch" minH="100vh">
-      <HStack 
-        justify="space-between" 
-        w="100%" 
-        direction={{ base: "column", sm: "row" }}
-        spacing={{ base: 4, sm: 0 }}
-        align={{ base: "flex-start", sm: "center" }}
-      >
-        <VStack align="start" spacing={2} flex={1}>
-          <Heading size={headingSize} color="blue.600" textAlign={{ base: "left", sm: "left" }}>
-            Admin Dashboard
-          </Heading>
-          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" textAlign={{ base: "left", sm: "left" }}>
-            CGPA Student Records Management System
-          </Text>
-        </VStack>
-        <Button 
-          onClick={handleLogout}
-          colorScheme="red" 
-          variant="solid"
-          size={buttonSize}
-          width={{ base: "full", sm: "auto" }}
-          alignSelf={{ base: "stretch", sm: "auto" }}
+        <HStack
+          justify="space-between"
+          w="100%"
+          direction={{ base: "column", sm: "row" }}
+          spacing={{ base: 4, sm: 0 }}
+          align={{ base: "flex-start", sm: "center" }}
         >
-          Logout
-        </Button>
-      </HStack>
-
-      {/* Statistics Cards */}
-      <Box 
-        display="grid" 
-        gridTemplateColumns={{ 
-          base: "1fr", 
-          sm: "repeat(2, 1fr)", 
-          lg: "repeat(3, 1fr)" 
-        }} 
-        gap={{ base: 3, md: 4, lg: 6 }} 
-        mb={6}
-      >
-        <Box 
-          p={{ base: 3, md: 4, lg: 5 }} 
-          borderRadius="8px" 
-          bg="white" 
-          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
-          transition="all 0.3s ease"
-          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
-        >
-          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="blue.600">
-            {stats.totalStudents}
-          </Text>
-          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Total Students</Text>
-        </Box>
-        
-        <Box 
-          p={{ base: 3, md: 4, lg: 5 }} 
-          borderRadius="8px" 
-          bg="white" 
-          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
-          transition="all 0.3s ease"
-          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
-        >
-          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="green.600">
-            {stats.arrearHavingStudents}
-          </Text>
-          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Arrear Having Students</Text>
-        </Box>
-        
-        <Box 
-          p={{ base: 3, md: 4, lg: 5 }} 
-          borderRadius="8px" 
-          bg="white" 
-          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
-          transition="all 0.3s ease"
-          _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
-        >
-          <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="orange.600">
-            {stats.passPercentage.toFixed(1)}%
-          </Text>
-          <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Pass Percentage</Text>
-        </Box>
-      </Box>
-
-      {/* Students Table */}
-      <Box 
-        bg="white" 
-        borderRadius="8px" 
-        p={{ base: 2, sm: 3, md: 4, lg: 5 }} 
-        boxShadow="0 2px 4px rgba(0,0,0,0.1)"
-        overflow="hidden"
-      >
-        <Heading size={{ base: "sm", md: "md", lg: "lg" }} mb={{ base: 3, md: 4 }} color="gray.800">
-          Student Academic Records (Semester-wise)
-        </Heading>
-        
-        {studentData.length === 0 ? (
-          <Text textAlign="center" color="gray.500" py={{ base: 6, md: 8 }}>
-            No student records found in the database.
-          </Text>
-        ) : (
-          <Box 
-            overflowX="auto" 
-            borderWidth="1px" 
-            borderRadius="md"
-            borderColor="gray.200"
-            boxShadow="sm"
-            position="relative"
-            sx={{
-              '&::-webkit-scrollbar': {
-                width: { base: '12px', md: '16px' },
-                height: { base: '12px', md: '16px' },
-              },
-              '&::-webkit-scrollbar-track': {
-                background: '#E2E8F0',
-                borderRadius: { base: '6px', md: '8px' },
-                border: '2px solid #CBD5E0',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'linear-gradient(180deg, #4A5568 0%, #2D3748 100%)',
-                borderRadius: { base: '6px', md: '8px' },
-                border: '2px solid #CBD5E0',
-                minHeight: { base: '30px', md: '40px' },
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: 'linear-gradient(180deg, #2D3748 0%, #1A202C 100%)',
-              },
-              '&::-webkit-scrollbar-corner': {
-                background: '#E2E8F0',
-              },
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#4A5568 #E2E8F0',
-            }}
+          <VStack align="start" spacing={2} flex={1}>
+            <Heading size={headingSize} color="blue.600" textAlign={{ base: "left", sm: "left" }}>
+              Admin Dashboard
+            </Heading>
+            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" textAlign={{ base: "left", sm: "left" }}>
+              CGPA Student Records Management System
+            </Text>
+          </VStack>
+          <Button
+            onClick={handleLogout}
+            colorScheme="red"
+            variant="solid"
+            size={buttonSize}
+            width={{ base: "full", sm: "auto" }}
+            alignSelf={{ base: "stretch", sm: "auto" }}
           >
-            <Table 
-              id="student-table" 
-              variant="simple" 
-              size={{ base: "xs", sm: "sm", md: "sm", lg: "md" }} 
-              width="100%" 
-              minWidth={{ base: "1200px", md: "1400px", lg: "1600px" }} 
-              fontSize={{ base: "10px", sm: "11px", md: "xs", lg: "sm" }} 
-              style={{ 
-                tableLayout: 'auto',
-                border: '2px solid #2D3748',
-                borderCollapse: 'separate',
-                borderSpacing: '0'
+            Logout
+          </Button>
+        </HStack>
+
+        {/* Statistics Cards */}
+        <Box
+          display="grid"
+          gridTemplateColumns={{
+            base: "1fr",
+            sm: "repeat(2, 1fr)",
+            lg: "repeat(3, 1fr)"
+          }}
+          gap={{ base: 3, md: 4, lg: 6 }}
+          mb={6}
+        >
+          <Box
+            p={{ base: 3, md: 4, lg: 5 }}
+            borderRadius="8px"
+            bg="white"
+            boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+            transition="all 0.3s ease"
+            _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+          >
+            <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="blue.600">
+              {stats.totalStudents}
+            </Text>
+            <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Total Students</Text>
+          </Box>
+
+          <Box
+            p={{ base: 3, md: 4, lg: 5 }}
+            borderRadius="8px"
+            bg="white"
+            boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+            transition="all 0.3s ease"
+            _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+          >
+            <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="green.600">
+              {stats.arrearHavingStudents}
+            </Text>
+            <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Arrear Having Students</Text>
+          </Box>
+
+          <Box
+            p={{ base: 3, md: 4, lg: 5 }}
+            borderRadius="8px"
+            bg="white"
+            boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+            transition="all 0.3s ease"
+            _hover={{ transform: "translateY(-2px)", boxShadow: "0 4px 8px rgba(0,0,0,0.15)" }}
+          >
+            <Text fontSize={{ base: "lg", md: "xl", lg: "2xl" }} fontWeight="bold" color="orange.600">
+              {stats.passPercentage.toFixed(1)}%
+            </Text>
+            <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Pass Percentage</Text>
+          </Box>
+        </Box>
+
+        {/* Students Table */}
+        <Box
+          bg="white"
+          borderRadius="8px"
+          p={{ base: 2, sm: 3, md: 4, lg: 5 }}
+          boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+          overflow="hidden"
+        >
+          <Heading size={{ base: "sm", md: "md", lg: "lg" }} mb={{ base: 3, md: 4 }} color="gray.800">
+            Student Academic Records (Semester-wise)
+          </Heading>
+
+          {studentData.length === 0 ? (
+            <Text textAlign="center" color="gray.500" py={{ base: 6, md: 8 }}>
+              No student records found in the database.
+            </Text>
+          ) : (
+            <Box
+              overflowX="auto"
+              borderWidth="1px"
+              borderRadius="md"
+              borderColor="gray.200"
+              boxShadow="sm"
+              position="relative"
+              sx={{
+                '&::-webkit-scrollbar': {
+                  width: { base: '12px', md: '16px' },
+                  height: { base: '12px', md: '16px' },
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#E2E8F0',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '2px solid #CBD5E0',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: 'linear-gradient(180deg, #4A5568 0%, #2D3748 100%)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '2px solid #CBD5E0',
+                  minHeight: { base: '30px', md: '40px' },
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: 'linear-gradient(180deg, #2D3748 0%, #1A202C 100%)',
+                },
+                '&::-webkit-scrollbar-corner': {
+                  background: '#E2E8F0',
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#4A5568 #E2E8F0',
               }}
             >
-              <Thead position="sticky" top={0} zIndex={1} bgColor="white" style={{ border: '2px solid #2D3748' }}>
-                <Tr style={{ border: '2px solid #2D3748' }}>
-                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="50px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>S.No</Th>
-                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>SECTION</Th>
-                  <Th 
-                    rowSpan={2} 
-                    textAlign="center" 
-                    p={{ base: 1, md: 2 }} 
-                    fontSize={{ base: "8px", md: "xs" }} 
-                    width="100px" 
-                    style={{ 
+              <Table
+                id="student-table"
+                variant="simple"
+                size={{ base: "xs", sm: "sm", md: "sm", lg: "md" }}
+                width="100%"
+                minWidth={{ base: "1200px", md: "1400px", lg: "1600px" }}
+                fontSize={{ base: "10px", sm: "11px", md: "xs", lg: "sm" }}
+                style={{
+                  tableLayout: 'auto',
+                  border: '2px solid #2D3748',
+                  borderCollapse: 'separate',
+                  borderSpacing: '0'
+                }}
+              >
+                <Thead position="sticky" top={0} zIndex={1} bgColor="white" style={{ border: '2px solid #2D3748' }}>
+                  <Tr style={{ border: '2px solid #2D3748' }}>
+                    <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="50px" style={{
                       border: '2px solid #2D3748',
-                      backgroundColor: sortBy === 'registerNo' ? '#E2E8F0' : '#EDF2F7',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onClick={() => handleSort('registerNo')}
-                    onMouseEnter={(e) => {
-                      if (sortBy !== 'registerNo') {
-                        e.target.style.backgroundColor = '#E2E8F0';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortBy !== 'registerNo') {
-                        e.target.style.backgroundColor = '#EDF2F7';
-                      }
-                    }}
-                  >
-                    REG NO 
-                    {sortBy === 'registerNo' && (
-                      <span style={{ marginLeft: '5px' }}>
-                        {sortOrder === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
-                  </Th>
-                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="150px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>NAME</Th>
-                  {/* Dynamic semester columns */}
-                  {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
-                    <Th key={semNum} colSpan={4} textAlign="center" bgColor={semNum % 2 === 0 ? "green.50" : "blue.50"} p={1} fontSize={{ base: "8px", md: "xs" }} style={{ 
+                      backgroundColor: '#EDF2F7',
+                      fontWeight: 'bold'
+                    }}>S.No</Th>
+                    <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#EDF2F7',
+                      fontWeight: 'bold'
+                    }}>SECTION</Th>
+                    <Th
+                      rowSpan={2}
+                      textAlign="center"
+                      p={{ base: 1, md: 2 }}
+                      fontSize={{ base: "8px", md: "xs" }}
+                      width="100px"
+                      style={{
+                        border: '2px solid #2D3748',
+                        backgroundColor: sortBy === 'registerNo' ? '#E2E8F0' : '#EDF2F7',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onClick={() => handleSort('registerNo')}
+                      onMouseEnter={(e) => {
+                        if (sortBy !== 'registerNo') {
+                          e.target.style.backgroundColor = '#E2E8F0';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (sortBy !== 'registerNo') {
+                          e.target.style.backgroundColor = '#EDF2F7';
+                        }
+                      }}
+                    >
+                      REG NO
+                      {sortBy === 'registerNo' && (
+                        <span style={{ marginLeft: '5px' }}>
+                          {sortOrder === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </Th>
+                    <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="150px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#EDF2F7',
+                      fontWeight: 'bold'
+                    }}>NAME</Th>
+                    {/* Dynamic semester columns */}
+                    {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
+                      <Th key={semNum} colSpan={4} textAlign="center" bgColor={semNum % 2 === 0 ? "green.50" : "blue.50"} p={1} fontSize={{ base: "8px", md: "xs" }} style={{
+                        border: '2px solid #2D3748',
+                        fontWeight: 'bold'
+                      }}>
+                        SEM {semNum}
+                      </Th>
+                    ))}
+                    <Th colSpan={3} textAlign="center" bgColor="purple.50" p={1} fontSize={{ base: "8px", md: "xs" }} style={{
                       border: '2px solid #2D3748',
                       fontWeight: 'bold'
-                    }}>
-                      SEM {semNum}
-                    </Th>
-                  ))}
-                  <Th colSpan={3} textAlign="center" bgColor="purple.50" p={1} fontSize={{ base: "8px", md: "xs" }} style={{ 
-                    border: '2px solid #2D3748',
-                    fontWeight: 'bold'
-                  }}>Overall</Th>
-                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="100px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>Signature</Th>
-                  <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#EDF2F7',
-                    fontWeight: 'bold'
-                  }}>Actions</Th>
-                </Tr>
-                <Tr style={{ border: '2px solid #2D3748' }}>
-                  {/* Dynamic semester sub-columns */}
-                  {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
-                    <React.Fragment key={`sub-${semNum}`}>
-                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
-                        border: '2px solid #2D3748',
-                        backgroundColor: '#F7FAFC',
-                        fontWeight: 'bold'
-                      }}>ARREAR COUNT</Th>
-                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
-                        border: '2px solid #2D3748',
-                        backgroundColor: '#F7FAFC',
-                        fontWeight: 'bold'
-                      }}>TOTAL ARREAR</Th>
-                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
-                        border: '2px solid #2D3748',
-                        backgroundColor: '#F7FAFC',
-                        fontWeight: 'bold'
-                      }}>TOT</Th>
-                      <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
-                        border: '2px solid #2D3748',
-                        backgroundColor: '#F7FAFC',
-                        fontWeight: 'bold'
-                      }}>SGPA</Th>
-                    </React.Fragment>
-                  ))}
-                  {/* Overall sub-columns */}
-                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#F7FAFC',
-                    fontWeight: 'bold'
-                  }}>CGPA</Th>
-                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#F7FAFC',
-                    fontWeight: 'bold'
-                  }}>TOT</Th>
-                  <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{ 
-                    border: '2px solid #2D3748',
-                    backgroundColor: '#F7FAFC',
-                    fontWeight: 'bold'
-                  }}>Total Arrear</Th>
-                </Tr>
-              </Thead>
-              <Tbody style={{ border: '2px solid #2D3748' }}>
-                {studentData.map((student) => (
-                  <Tr key={student.registerNo} style={{ border: '2px solid #2D3748' }}>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.sno}</Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.section}</Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.registerNo}</Td>
-                    <Td p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.name}</Td>
-                    {/* Dynamic semester data */}
-                    {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
-                      const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
-                      return (
-                        <React.Fragment key={`data-${semNum}`}>
-                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsCount}</Td>
-                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsTotal}</Td>
-                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.total}</Td>
-                          <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.sgpa.toFixed(2)}</Td>
-                        </React.Fragment>
-                      );
-                    })}
-                    {/* Overall Data */}
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.cgpa.toFixed(2)}</Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.total}</Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.totalArrears}</Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}></Td>
-                    <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>
-                      <Button 
-                        size={{ base: "xs", md: "xs" }} 
-                        colorScheme="red" 
-                        onClick={() => handleDeleteStudent(student.registerNo)}
-                      >
-                        Delete
-                      </Button>
-                    </Td>
+                    }}>Overall</Th>
+                    <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="100px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#EDF2F7',
+                      fontWeight: 'bold'
+                    }}>Signature</Th>
+                    <Th rowSpan={2} textAlign="center" p={{ base: 1, md: 2 }} fontSize={{ base: "8px", md: "xs" }} width="80px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#EDF2F7',
+                      fontWeight: 'bold'
+                    }}>Actions</Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </Box>
-        )}
+                  <Tr style={{ border: '2px solid #2D3748' }}>
+                    {/* Dynamic semester sub-columns */}
+                    {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => (
+                      <React.Fragment key={`sub-${semNum}`}>
+                        <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{
+                          border: '2px solid #2D3748',
+                          backgroundColor: '#F7FAFC',
+                          fontWeight: 'bold'
+                        }}>ARREAR COUNT</Th>
+                        <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{
+                          border: '2px solid #2D3748',
+                          backgroundColor: '#F7FAFC',
+                          fontWeight: 'bold'
+                        }}>TOTAL ARREAR</Th>
+                        <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{
+                          border: '2px solid #2D3748',
+                          backgroundColor: '#F7FAFC',
+                          fontWeight: 'bold'
+                        }}>TOT</Th>
+                        <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{
+                          border: '2px solid #2D3748',
+                          backgroundColor: '#F7FAFC',
+                          fontWeight: 'bold'
+                        }}>SGPA</Th>
+                      </React.Fragment>
+                    ))}
+                    {/* Overall sub-columns */}
+                    <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#F7FAFC',
+                      fontWeight: 'bold'
+                    }}>CGPA</Th>
+                    <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="60px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#F7FAFC',
+                      fontWeight: 'bold'
+                    }}>TOT</Th>
+                    <Th textAlign="center" fontSize={{ base: "7px", md: "10px" }} p={1} width="80px" style={{
+                      border: '2px solid #2D3748',
+                      backgroundColor: '#F7FAFC',
+                      fontWeight: 'bold'
+                    }}>Total Arrear</Th>
+                  </Tr>
+                </Thead>
+                <Tbody style={{ border: '2px solid #2D3748' }}>
+                  {studentData.map((student) => (
+                    <Tr key={student.registerNo} style={{ border: '2px solid #2D3748' }}>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.sno}</Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.section}</Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.registerNo}</Td>
+                      <Td p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.name}</Td>
+                      {/* Dynamic semester data */}
+                      {Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
+                        const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
+                        return (
+                          <React.Fragment key={`data-${semNum}`}>
+                            <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsCount}</Td>
+                            <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.arrearsTotal}</Td>
+                            <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.total}</Td>
+                            <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{semData.sgpa.toFixed(2)}</Td>
+                          </React.Fragment>
+                        );
+                      })}
+                      {/* Overall Data */}
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.cgpa.toFixed(2)}</Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.total}</Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>{student.overall.totalArrears}</Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}></Td>
+                      <Td textAlign="center" p={{ base: 0.5, md: 1 }} fontSize={{ base: "8px", md: "xs" }} style={{ border: '1px solid #CBD5E0' }}>
+                        <Button
+                          size={{ base: "xs", md: "xs" }}
+                          colorScheme="red"
+                          onClick={() => handleDeleteStudent(student.registerNo)}
+                        >
+                          Delete
+                        </Button>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </Box>
+          )}
 
         </Box>
 
         <HStack spacing={{ base: 2, md: 4 }} mt={4} direction={{ base: "column", md: "row" }}>
-        
-        <Button 
-          onClick={exportToExcel}
-          colorScheme="blue" 
-          variant="solid"
-          size={{ base: "sm", md: "md" }}
-          width={{ base: "full", md: "auto" }}
-        >
-          Excel
-        </Button>
-        
-        <Button 
-          onClick={exportToPDF}
-          colorScheme="blue" 
-          variant="solid"  
-          size={{ base: "sm", md: "md" }}
-          width={{ base: "full", md: "auto" }}
-        >
-          PDF
-        </Button>
-      </HStack>
+
+          <Button
+            onClick={exportToExcel}
+            colorScheme="blue"
+            variant="solid"
+            size={{ base: "sm", md: "md" }}
+            width={{ base: "full", md: "auto" }}
+          >
+            Excel
+          </Button>
+
+          <Button
+            onClick={exportToPDF}
+            colorScheme="blue"
+            variant="solid"
+            size={{ base: "sm", md: "md" }}
+            width={{ base: "full", md: "auto" }}
+          >
+            PDF
+          </Button>
+        </HStack>
       </VStack>
     </Box>
   );

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, VStack, Heading, Text, Table, Thead, Tbody, Tr, Th, Td, 
+import {
+  Box, VStack, Heading, Text, Table, Thead, Tbody, Tr, Th, Td,
   Stat, StatLabel, StatNumber, StatHelpText, StatArrow, Button, HStack,
   useToast, Card, CardBody, Divider
 } from '@chakra-ui/react';
@@ -27,17 +27,17 @@ const ResultSummary = () => {
 
   const calculateCGPA = () => {
     if (!userData?.semesters?.length) return 0;
-    
+
     let totalCredits = 0;
     let weightedSum = 0;
-    
+
     userData.semesters.forEach(semester => {
       semester.subjects.forEach(subject => {
         totalCredits += subject.credits;
         weightedSum += (subject.gradePoint * subject.credits);
       });
     });
-    
+
     return parseFloat((weightedSum / totalCredits).toFixed(2));
   };
 
@@ -64,12 +64,12 @@ const ResultSummary = () => {
   const exportToExcel = () => {
     try {
       const tableData = extractTableData();
-      
+
       // Create worksheet with exact table structure
       const ws = XLSX.utils.json_to_sheet(tableData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'CGPA Results');
-      
+
       // Add student info as first rows
       const studentInfo = [
         ['Student Name', userData.name],
@@ -78,13 +78,13 @@ const ResultSummary = () => {
         ['Overall CGPA', cgpa],
         []
       ];
-      
+
       // Combine student info with table data
       const finalData = [...studentInfo, ...Object.values(tableData).map(Object.values)];
       XLSX.utils.sheet_add_aoa(ws, finalData);
-      
+
       XLSX.writeFile(wb, `CGPA_Results_${userData.registerNo}.xlsx`);
-      
+
       toast({
         title: 'Excel Downloaded',
         description: 'Results exported to Excel successfully!',
@@ -109,9 +109,10 @@ const ResultSummary = () => {
     setIsSaving(true);
     try {
       // Save to backend database
-      const apiEndpoint = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // Use empty string as fallback for relative path (ngrok/production)
+      const apiEndpoint = import.meta.env.VITE_API_URL || '';
       const response = await axios.post(`${apiEndpoint}/api/user`, userData);
-      
+
       if (response.status === 201) {
         toast({
           title: 'Results Saved Successfully',
@@ -123,7 +124,7 @@ const ResultSummary = () => {
       }
     } catch (error) {
       console.error('Error saving results to database:', error);
-      
+
       toast({
         title: 'Database Error',
         description: 'Failed to save results to database. Please try again.',
@@ -166,10 +167,10 @@ const ResultSummary = () => {
         transform: scale(0.9);
         transform-origin: top left;
       `;
-      
+
       // Clone the content with optimized styles
       const clonedElement = element.cloneNode(true);
-      
+
       // Apply system-safe fonts to all text elements
       const textElements = clonedElement.querySelectorAll('*');
       textElements.forEach(el => {
@@ -185,7 +186,7 @@ const ResultSummary = () => {
         el.style.whiteSpace = 'normal';
         el.style.wordBreak = 'break-word';
       });
-      
+
       // Apply compact styles to tables
       const tables = clonedElement.querySelectorAll('table');
       tables.forEach(table => {
@@ -203,7 +204,7 @@ const ResultSummary = () => {
           word-break: break-word;
         `;
       });
-      
+
       // Apply styles to table headers
       const headers = clonedElement.querySelectorAll('th');
       headers.forEach(header => {
@@ -220,7 +221,7 @@ const ResultSummary = () => {
           font-weight: bold;
         `;
       });
-      
+
       // Apply styles to table cells
       const cells = clonedElement.querySelectorAll('td');
       cells.forEach(cell => {
@@ -237,7 +238,7 @@ const ResultSummary = () => {
           border: 1px solid #e2e8f0;
         `;
       });
-      
+
       // Apply styles to headings
       const headings = clonedElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
       headings.forEach(heading => {
@@ -252,30 +253,14 @@ const ResultSummary = () => {
           word-break: break-word;
         `;
       });
-      
-      // Apply mobile-specific styles
-      const isMobile = window.innerWidth <= 768;
-      if (isMobile) {
-        tempContainer.style.cssText += `
-          transform: scale(0.7);
-          -webkit-transform: scale(0.7);
-          transform-origin: top left;
-        `;
-        
-        // Further reduce font size for mobile
-        const mobileElements = clonedElement.querySelectorAll('*');
-        mobileElements.forEach(el => {
-          if (el.style.fontSize) {
-            const currentSize = parseInt(el.style.fontSize);
-            el.style.fontSize = `${Math.max(8, currentSize - 2)}px`;
-          }
-        });
-      }
-      
+
+      // Apply mobile-specific styles - removed to ensure high quality PDF
+      // We want the PDF to look crisp like desktop even on mobile
+
       // Remove unnecessary elements
       const buttons = clonedElement.querySelectorAll('button');
       buttons.forEach(btn => btn.remove());
-      
+
       // Remove excessive spacing
       const verticalStacks = clonedElement.querySelectorAll('.chakra-stack');
       verticalStacks.forEach(stack => {
@@ -286,25 +271,26 @@ const ResultSummary = () => {
           stack.style.marginBottom = '5px';
         }
       });
-      
+
       tempContainer.appendChild(clonedElement);
       document.body.appendChild(tempContainer);
 
-      // Adjust canvas dimensions for mobile
-      const canvasWidth = isMobile ? 600 : 794;
-      const canvasHeight = isMobile ? 900 : 1123;
-      
+      // Use fixed dimensions for high quality render
+      const canvasWidth = 800;
+      const canvasHeight = 1150;
+
       const canvas = await html2canvas(tempContainer, {
-        scale: 1,
+        scale: 2, // High resolution
         useCORS: true,
         allowTaint: true,
-        width: canvasWidth,
+        width: canvasWidth, // Force desktop width
         height: canvasHeight,
+        windowWidth: 1200, // Simulate desktop view
         scrollX: 0,
         scrollY: 0,
         logging: false
       });
-      
+
       const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF({
         orientation: 'p',
@@ -312,23 +298,23 @@ const ResultSummary = () => {
         format: 'a4',
         compress: true
       });
-      
+
       // Add image to PDF with minimal margins
       const pdfWidth = 210; // A4 width in mm
       const pdfHeight = 297; // A4 height in mm
       const margin = 10; // 10mm margins
-      
+
       // Calculate image dimensions to fit A4
       const imgWidth = pdfWidth - (margin * 2);
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-      
+
       // Clean up temporary elements
       document.body.removeChild(tempContainer);
-      
+
       pdf.save(`CGPA_Results_${userData.registerNo}.pdf`);
-      
+
       toast({
         title: 'PDF Downloaded',
         description: isMobile ? 'Mobile-optimized single-page PDF exported!' : 'Results exported to single-page PDF successfully!',
@@ -349,21 +335,21 @@ const ResultSummary = () => {
   };
 
   if (!userData) {
-  return (
-    <Box 
-      display="flex" 
-      justifyContent="center" 
-      alignItems="center" 
-      minH="100vh"
-      bg="gray.50"
-    >
-      <VStack spacing={4}>
-        <Text fontSize="lg" fontWeight="bold">Loading your results...</Text>
-        <Text color="gray.600">Please wait while we fetch your data</Text>
-      </VStack>
-    </Box>
-  );
-}
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minH="100vh"
+        bg="gray.50"
+      >
+        <VStack spacing={4}>
+          <Text fontSize="lg" fontWeight="bold">Loading your results...</Text>
+          <Text color="gray.600">Please wait while we fetch your data</Text>
+        </VStack>
+      </Box>
+    );
+  }
 
   const cgpa = calculateCGPA();
 
@@ -394,7 +380,7 @@ const ResultSummary = () => {
           </Card>
 
           <Heading size='lg' textAlign='center'>Your Academic Summary</Heading>
-          
+
           {/* Student Details Card with Download Button */}
           <Card bg='white' boxShadow='md'>
             <CardBody>
@@ -415,7 +401,7 @@ const ResultSummary = () => {
                         {cgpa >= 7.5 ? 'Excellent!' : 'Keep improving!'}
                       </StatHelpText>
                     </Stat>
-                    <Button 
+                    <Button
                       colorScheme='red'
                       onClick={exportToPDF}
                       size='sm'
@@ -428,14 +414,14 @@ const ResultSummary = () => {
             </CardBody>
           </Card>
 
-        {/* Semester-wise Performance with Fixed Height and Scroll */}
+          {/* Semester-wise Performance with Fixed Height and Scroll */}
           <Card bg='white' boxShadow='md'>
             <CardBody p={0}>
               <Box p={4}>
                 <Text fontSize='lg' fontWeight='bold'>Semester-wise Performance</Text>
               </Box>
               <Box
-                maxH='60vh' 
+                maxH='60vh'
                 overflowY='auto'
                 sx={{
                   '@media (max-width: 768px)': {
@@ -469,58 +455,58 @@ const ResultSummary = () => {
                   scrollbarColor: '#4A5568 #E2E8F0',
                 }}
               >
-              {userData.semesters.map(semester => (
-                <Box key={semester.semesterNo} borderBottom='1px solid #E2E8F0'>
-                  <Box p={4} bg='gray.50' borderBottom='2px solid #CBD5E0'>
-                    <Text fontWeight='bold' fontSize='md'>
-                      Semester {semester.semesterNo} - SGPA: {semester.sgpa}
-                    </Text>
-                  </Box>
-                  <Table variant='simple' size='sm'
-                    sx={{
-                      '@media (max-width: 768px)': {
-                        minWidth: '700px', // Ensure table maintains width for horizontal scroll
-                      }
-                    }}
-                  >
-                    <Thead position='sticky' top={0} zIndex={1} bgColor='white' boxShadow='sm'>
-                      <Tr>
-                        <Th borderWidth='1px' borderColor='gray.300'>Code</Th>
-                        <Th borderWidth='1px' borderColor='gray.300'>Subject</Th>
-                        <Th isNumeric borderWidth='1px' borderColor='gray.300'>Credits</Th>
-                        <Th borderWidth='1px' borderColor='gray.300'>Grade</Th>
-                        <Th isNumeric borderWidth='1px' borderColor='gray.300'>Points</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {semester.subjects.map(subject => (
-                        <Tr key={subject.code} _hover={{ bg: 'gray.50' }}>
-                          <Td borderWidth='1px' borderColor='gray.200'>{subject.code}</Td>
-                          <Td borderWidth='1px' borderColor='gray.200'>{subject.name}</Td>
-                          <Td isNumeric borderWidth='1px' borderColor='gray.200'>{subject.credits}</Td>
-                          <Td borderWidth='1px' borderColor='gray.200'>{subject.grade}</Td>
-                          <Td isNumeric borderWidth='1px' borderColor='gray.200'>{subject.gradePoint}</Td>
+                {userData.semesters.map(semester => (
+                  <Box key={semester.semesterNo} borderBottom='1px solid #E2E8F0'>
+                    <Box p={4} bg='gray.50' borderBottom='2px solid #CBD5E0'>
+                      <Text fontWeight='bold' fontSize='md'>
+                        Semester {semester.semesterNo} - SGPA: {semester.sgpa}
+                      </Text>
+                    </Box>
+                    <Table variant='simple' size='sm'
+                      sx={{
+                        '@media (max-width: 768px)': {
+                          minWidth: '700px', // Ensure table maintains width for horizontal scroll
+                        }
+                      }}
+                    >
+                      <Thead position='sticky' top={0} zIndex={1} bgColor='white' boxShadow='sm'>
+                        <Tr>
+                          <Th borderWidth='1px' borderColor='gray.300'>Code</Th>
+                          <Th borderWidth='1px' borderColor='gray.300'>Subject</Th>
+                          <Th isNumeric borderWidth='1px' borderColor='gray.300'>Credits</Th>
+                          <Th borderWidth='1px' borderColor='gray.300'>Grade</Th>
+                          <Th isNumeric borderWidth='1px' borderColor='gray.300'>Points</Th>
                         </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </Box>
-              ))}
-            </Box>
+                      </Thead>
+                      <Tbody>
+                        {semester.subjects.map(subject => (
+                          <Tr key={subject.code} _hover={{ bg: 'gray.50' }}>
+                            <Td borderWidth='1px' borderColor='gray.200'>{subject.code}</Td>
+                            <Td borderWidth='1px' borderColor='gray.200'>{subject.name}</Td>
+                            <Td isNumeric borderWidth='1px' borderColor='gray.200'>{subject.credits}</Td>
+                            <Td borderWidth='1px' borderColor='gray.200'>{subject.grade}</Td>
+                            <Td isNumeric borderWidth='1px' borderColor='gray.200'>{subject.gradePoint}</Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </Box>
+                ))}
+              </Box>
             </CardBody>
           </Card>
         </Box>
 
         {/* Action Buttons */}
-        <VStack 
-          spacing={4} 
+        <VStack
+          spacing={4}
           mt={6}
           direction={{ base: 'column', md: 'row' }}
           align={{ base: 'stretch', md: 'center' }}
           justify={{ base: 'center', md: 'space-between' }}
           width={{ base: 'full', md: 'auto' }}
         >
-          <Button 
+          <Button
             onClick={() => navigate('/semester-grades')}
             width={{ base: 'full', md: 'auto' }}
             size={{ base: 'md', md: 'md' }}
@@ -528,8 +514,8 @@ const ResultSummary = () => {
           >
             Back to Grades
           </Button>
-          <Button 
-            colorScheme='blue' 
+          <Button
+            colorScheme='blue'
             onClick={handleSave}
             isLoading={isSaving}
             loadingText='Saving...'
