@@ -22,24 +22,25 @@
     { code: 'HS2281', name: 'Communication and Soft Skills Laboratory', credits: 1.5 }
   ],
   3: [
-    { code: 'MA2321', name: 'Probability and Statistics', credits: 4 },
-    { code: 'EC2321', name: 'Circuit Theory', credits: 3 },
-    { code: 'EC2322', name: 'Electromagnetic Fields', credits: 3 },
-    { code: 'EC2323', name: 'Digital System Design', credits: 3 },
-    { code: 'EC2324', name: 'Signals and Systems', credits: 4 },
-    { code: 'EC2381', name: 'Digital System Design Laboratory', credits: 2 },
-    { code: 'EC2382', name: 'Circuits and Signals Laboratory', credits: 2 },
-    { code: 'HS2381', name: 'Interpersonal Skills Laboratory', credits: 1 }
+    { code: 'MA2323', name: 'Random Processes and Linear Algebra', credits: 4 },
+    { code: 'EC2311', name: 'Data Structures and C Programming', credits: 3 },
+    { code: 'EV2312', name: 'Circuit Theory', credits: 4 },
+    { code: 'EC2314', name: 'Control and Automation', credits: 3 },
+    { code: 'EV2314', name: 'Analog and Linear Integrated Circuits', credits: 3 },
+    { code: 'EV2315', name: 'Digital Logic and System Design', credits: 4 },
+    { code: 'EV2381', name: 'Analog and Linear Integrated Circuits Laboratory', credits: 2 },
+    { code: 'EC2382', name: 'Data Structures and C Programming Lab', credits: 1.5 },
+    { code: 'GE2381', name: 'Professional Development', credits: 1 }
   ],
   4: [
-    { code: 'MA2421', name: 'Numerical Methods', credits: 4 },
-    { code: 'EC2421', name: 'Electronic Circuits', credits: 3 },
-    { code: 'EC2422', name: 'Control Systems', credits: 3 },
-    { code: 'EC2423', name: 'Microprocessors and Microcontrollers', credits: 3 },
-    { code: 'EC2424', name: 'Transmission Lines and Waveguides', credits: 3 },
-    { code: 'EC2481', name: 'Electronic Circuits Laboratory', credits: 2 },
-    { code: 'EC2482', name: 'Microprocessors Laboratory', credits: 2 },
-    { code: 'GE2481', name: 'Environmental Science', credits: 2 }
+    { code: 'EV2411', name: 'FPGA Based System Design', credits: 3 },
+    { code: 'EV2412', name: 'CMOS VLSI Design', credits: 3 },
+    { code: 'EV2413', name: 'Linux for Scripting', credits: 4 },
+    { code: 'EV2414', name: 'Signals and Systems', credits: 4 },
+    { code: 'EV2415', name: 'Signal Processing and Communication', credits: 3 },
+    { code: 'GE2421', name: 'Environmental Sciences and Sustainability', credits: 2 },
+    { code: 'EV2481', name: 'FPGA Programming Laboratory', credits: 2 },
+    { code: 'EV2482', name: 'Signal Processing and Communication Laboratory', credits: 2 }
   ],
   5: [
     { code: 'EC2521', name: 'Linear Integrated Circuits', credits: 3 },
