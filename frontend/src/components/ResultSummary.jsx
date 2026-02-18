@@ -7,23 +7,35 @@ import {
 } from '@chakra-ui/react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const ResultSummary = () => {
-  const [userData, setUserData] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const navigate = useNavigate();
-  const toast = useToast();
 
+  const [userData, setUserData] = useState(null);
+  const [hasAutoSaved, setHasAutoSaved] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load user data from local storage
   useEffect(() => {
     const savedData = localStorage.getItem('userData');
-    if (!savedData) {
-      navigate('/');
-      return;
+    if (savedData) {
+      try {
+        setUserData(JSON.parse(savedData));
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+      }
     }
-    setUserData(JSON.parse(savedData));
-  }, [navigate]);
+  }, []);
+
+  // Auto-save effect
+  useEffect(() => {
+    if (userData && !hasAutoSaved) {
+      handleSave(true); // true indicates auto-save
+      setHasAutoSaved(true);
+    }
+  }, [userData, hasAutoSaved]);
 
   const calculateCGPA = () => {
     if (!userData?.semesters?.length) return 0;
@@ -41,257 +53,55 @@ const ResultSummary = () => {
     return parseFloat((weightedSum / totalCredits).toFixed(2));
   };
 
-  // Extract data from UI-rendered table only
-  const extractTableData = () => {
-    const tableData = [];
-    userData.semesters.forEach(semester => {
-      semester.subjects.forEach(subject => {
-        tableData.push({
-          'Subject Code': subject.code,
-          'Subject Name': subject.name,
-          'Credits': subject.credits,
-          'Grade': subject.grade,
-          'Points': subject.gradePoint,
-          'Semester': semester.semesterNo,
-          'SGPA': semester.sgpa
-        });
-      });
-    });
-    return tableData;
-  };
+  const cgpa = calculateCGPA();
 
-  // Export to Excel using UI data only
-  const exportToExcel = () => {
-    try {
-      const tableData = extractTableData();
 
-      // Create worksheet with exact table structure
-      const ws = XLSX.utils.json_to_sheet(tableData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'CGPA Results');
 
-      // Add student info as first rows
-      const studentInfo = [
-        ['Student Name', userData.name],
-        ['Register Number', userData.registerNo],
-        ['Section', userData.section],
-        ['Overall CGPA', cgpa],
-        []
-      ];
 
-      // Combine student info with table data
-      const finalData = [...studentInfo, ...Object.values(tableData).map(Object.values)];
-      XLSX.utils.sheet_add_aoa(ws, finalData);
 
-      XLSX.writeFile(wb, `CGPA_Results_${userData.registerNo}.xlsx`);
+  // Save to database
+  const handleSave = async (isAuto = false) => {
+    if (!userData) return;
 
-      toast({
-        title: 'Excel Downloaded',
-        description: 'Results exported to Excel successfully!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to export Excel file',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  // Export to PDF using DOM capture
-  const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save to backend database
-      // Use empty string as fallback for relative path (ngrok/production)
       const apiEndpoint = import.meta.env.VITE_API_URL || '';
       const response = await axios.post(`${apiEndpoint}/api/user`, userData);
 
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
+        if (!isAuto) {
+          toast({
+            title: 'Results Saved Successfully',
+            description: 'Your results have been saved to the database!',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        } else {
+          console.log('Auto-saved user data to database');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving results to database:', error);
+      if (!isAuto) {
         toast({
-          title: 'Results Saved Successfully',
-          description: 'Your results have been saved to the database!',
-          status: 'success',
+          title: 'Database Error',
+          description: 'Failed to save results to database. Please try again.',
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
       }
-    } catch (error) {
-      console.error('Error saving results to database:', error);
-
-      toast({
-        title: 'Database Error',
-        description: 'Failed to save results to database. Please try again.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const exportToPDF = async () => {
+    setIsGeneratingPdf(true);
     try {
-      const element = document.getElementById('result-table-container');
-      if (!element) {
-        toast({
-          title: 'Error',
-          description: 'Results table not found',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
+      if (!userData || !userData.semesters) return;
 
-      // Create a temporary container with optimized styles for single page PDF
-      const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = `
-        width: 210mm;
-        padding: 10px;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 10px;
-        line-height: 1.4;
-        letter-spacing: 0.3px;
-        page-break-inside: avoid;
-        overflow: hidden;
-        white-space: normal;
-        word-break: break-word;
-        transform: scale(0.9);
-        transform-origin: top left;
-      `;
-
-      // Clone the content with optimized styles
-      const clonedElement = element.cloneNode(true);
-
-      // Apply system-safe fonts to all text elements
-      const textElements = clonedElement.querySelectorAll('*');
-      textElements.forEach(el => {
-        if (el.style.fontFamily) {
-          el.style.fontFamily = 'Arial, Helvetica, sans-serif';
-        }
-        if (el.style.lineHeight) {
-          el.style.lineHeight = '1.4';
-        }
-        if (el.style.letterSpacing) {
-          el.style.letterSpacing = '0.3px';
-        }
-        el.style.whiteSpace = 'normal';
-        el.style.wordBreak = 'break-word';
-      });
-
-      // Apply compact styles to tables
-      const tables = clonedElement.querySelectorAll('table');
-      tables.forEach(table => {
-        table.style.cssText = `
-          width: 100%;
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 10px;
-          line-height: 1.4;
-          letter-spacing: 0.3px;
-          page-break-inside: avoid;
-          margin: 0;
-          border-collapse: collapse;
-          table-layout: fixed;
-          white-space: normal;
-          word-break: break-word;
-        `;
-      });
-
-      // Apply styles to table headers
-      const headers = clonedElement.querySelectorAll('th');
-      headers.forEach(header => {
-        header.style.cssText = `
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 12px;
-          line-height: 1.4;
-          letter-spacing: 0.3px;
-          padding: 8px 6px;
-          vertical-align: middle;
-          white-space: normal;
-          word-break: break-word;
-          text-align: center;
-          font-weight: bold;
-        `;
-      });
-
-      // Apply styles to table cells
-      const cells = clonedElement.querySelectorAll('td');
-      cells.forEach(cell => {
-        cell.style.cssText = `
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 10px;
-          line-height: 1.4;
-          letter-spacing: 0.3px;
-          padding: 6px 8px;
-          vertical-align: middle;
-          white-space: normal;
-          word-break: break-word;
-          page-break-inside: avoid;
-          border: 1px solid #e2e8f0;
-        `;
-      });
-
-      // Apply styles to headings
-      const headings = clonedElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      headings.forEach(heading => {
-        const fontSize = heading.tagName.toLowerCase() === 'h1' ? '14px' : '12px';
-        heading.style.cssText = `
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: ${fontSize};
-          line-height: 1.6;
-          letter-spacing: 0.3px;
-          margin: 10px 0 5px 0;
-          white-space: normal;
-          word-break: break-word;
-        `;
-      });
-
-      // Apply mobile-specific styles - removed to ensure high quality PDF
-      // We want the PDF to look crisp like desktop even on mobile
-
-      // Remove unnecessary elements
-      const buttons = clonedElement.querySelectorAll('button');
-      buttons.forEach(btn => btn.remove());
-
-      // Remove excessive spacing
-      const verticalStacks = clonedElement.querySelectorAll('.chakra-stack');
-      verticalStacks.forEach(stack => {
-        if (stack.style.marginTop && parseInt(stack.style.marginTop) > 10) {
-          stack.style.marginTop = '5px';
-        }
-        if (stack.style.marginBottom && parseInt(stack.style.marginBottom) > 10) {
-          stack.style.marginBottom = '5px';
-        }
-      });
-
-      tempContainer.appendChild(clonedElement);
-      document.body.appendChild(tempContainer);
-
-      // Use fixed dimensions for high quality render
-      const canvasWidth = 800;
-      const canvasHeight = 1150;
-
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2, // High resolution
-        useCORS: true,
-        allowTaint: true,
-        width: canvasWidth, // Force desktop width
-        height: canvasHeight,
-        windowWidth: 1200, // Simulate desktop view
-        scrollX: 0,
-        scrollY: 0,
-        logging: false
-      });
-
-      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
@@ -299,38 +109,138 @@ const ResultSummary = () => {
         compress: true
       });
 
-      // Add image to PDF with minimal margins
-      const pdfWidth = 210; // A4 width in mm
-      const pdfHeight = 297; // A4 height in mm
-      const margin = 10; // 10mm margins
-
-      // Calculate image dimensions to fit A4
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const margin = 10;
       const imgWidth = pdfWidth - (margin * 2);
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+      // Function to create a printable element for a semester
+      const createSemesterElement = (semester, isFirst) => {
+        const container = document.createElement('div');
+        container.style.cssText = `
+          width: 210mm;
+          padding: 20px; /* Increased padding */
+          font-family: Arial, Helvetica, sans-serif;
+          background: white;
+          color: black;
+        `;
 
-      // Clean up temporary elements
-      document.body.removeChild(tempContainer);
+        // College Header
+        const headerHtml = `
+          <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+            <h2 style="font-size: 16px; margin: 0; font-weight: bold;">PSNA COLLEGE OF ENGINEERING & TECHNOLOGY, DINDIGUL–624622</h2>
+            <p style="font-size: 10px; margin: 5px 0; color: #555;">(An Autonomous Institution, Affiliated to Anna University, Chennai)</p>
+            <p style="font-size: 10px; margin: 5px 0; color: #555;">Department of Electronics Engineering (VLSI Design and Technology)</p>
+          </div>
+        `;
 
-      pdf.save(`CGPA_Results_${userData.registerNo}.pdf`);
+        // Student Details
+        const studentHtml = `
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 14px; margin-bottom: 10px; text-decoration: underline;">Student Details</h3>
+            <table style="width: 100%; font-size: 11px;">
+              <tr>
+                <td><strong>Name:</strong> ${userData.name}</td>
+                <td><strong>Register Number:</strong> ${userData.registerNo}</td>
+              </tr>
+              <tr>
+                <td><strong>Section:</strong> ${userData.section}</td>
+                <td><strong>Overall CGPA:</strong> ${cgpa}</td>
+              </tr>
+            </table>
+          </div>
+        `;
+
+        // Semester Header
+        const semesterHeader = `
+           <div style="margin-bottom: 10px; background-color: #f0f0f0; padding: 5px; border-left: 4px solid #333;">
+              <h3 style="margin: 0; font-size: 14px;">Semester ${semester.semesterNo}</h3>
+              <p style="margin: 0; font-size: 11px;">SGPA: ${semester.sgpa}</p>
+           </div>
+        `;
+
+        // Subjects Table
+        let subjectsRows = '';
+        semester.subjects.forEach(subject => {
+          subjectsRows += `
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px; border: 1px solid #ddd;">${subject.code}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${subject.name}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${subject.credits}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${subject.grade}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${subject.gradePoint}</td>
+                </tr>
+            `;
+        });
+
+        const tableHtml = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Code</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Subject</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Credits</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Grade</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${subjectsRows}
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = headerHtml + studentHtml + semesterHeader + tableHtml;
+        return container;
+      };
+
+      // Process each semester
+      for (let i = 0; i < userData.semesters.length; i++) {
+        const semester = userData.semesters[i];
+        const element = createSemesterElement(semester);
+
+        document.body.appendChild(element); // Append to DOM to capture
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          windowWidth: 800 // Force reasonable width
+        });
+
+        document.body.removeChild(element); // Cleanup
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+      }
+
+      pdf.save(`Academic_Summary_${userData.registerNo}.pdf`);
 
       toast({
         title: 'PDF Downloaded',
-        description: isMobile ? 'Mobile-optimized single-page PDF exported!' : 'Results exported to single-page PDF successfully!',
+        description: 'Semester-wise detailed result summary downloaded.',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+
     } catch (error) {
       console.error('Error exporting to PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to export PDF. Please try again.',
+        description: 'Failed to export PDF.',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -351,7 +261,7 @@ const ResultSummary = () => {
     );
   }
 
-  const cgpa = calculateCGPA();
+
 
   return (
     <Box minH='100vh' bg='white' p={4}>
@@ -405,6 +315,8 @@ const ResultSummary = () => {
                       colorScheme='red'
                       onClick={exportToPDF}
                       size='sm'
+                      isLoading={isGeneratingPdf}
+                      loadingText="Generating..."
                     >
                       Download PDF
                     </Button>
@@ -516,7 +428,7 @@ const ResultSummary = () => {
           </Button>
           <Button
             colorScheme='blue'
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
             isLoading={isSaving}
             loadingText='Saving...'
             width={{ base: 'full', md: 'auto' }}
