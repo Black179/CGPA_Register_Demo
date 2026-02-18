@@ -607,6 +607,9 @@ const AdminDashboard = () => {
       // Process fresh data for export
       const freshStudentData = getStudentSemesterData();
 
+      // Force 8 semesters for the report
+      const reportMaxSemesters = 8;
+
       // Create a temporary container with heading and dynamically generated table
       const tempContainer = document.createElement('div');
 
@@ -615,31 +618,31 @@ const AdminDashboard = () => {
       tempContainer.style.position = 'absolute';
       tempContainer.style.left = '-9999px'; // Hide from view
       tempContainer.style.top = '0';
-      tempContainer.style.width = '1600px'; // Fixed wide width
+      tempContainer.style.width = '3200px'; // Significantly increased width to fit 8 semesters
       tempContainer.style.padding = '20px';
       tempContainer.style.backgroundColor = 'white';
       tempContainer.style.fontFamily = 'Arial, sans-serif';
-      tempContainer.style.fontSize = '14px';
+      tempContainer.style.fontSize = '16px'; // Adjusted font size to balance readability and fit
 
       const heading = document.createElement('div');
       heading.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 5px 0; font-size: 24px; font-weight: bold; line-height: 1.2;">
+        <div style="text-align: center; margin-bottom: 20px; color: black;">
+          <h2 style="margin: 5px 0; font-size: 32px; font-weight: bold; line-height: 1.2;">
             PSNA College of Engineering & Technology, Dindigul – 624622
           </h2>
-          <p style="margin: 3px 0; font-size: 16px; font-style: italic; line-height: 1.1;">
+          <p style="margin: 3px 0; font-size: 24px; font-style: italic; line-height: 1.1;">
             (An Autonomous Institution, Affiliated to Anna University, Chennai)
           </p>
-          <p style="margin: 3px 0; font-size: 16px; line-height: 1.1;">
+          <p style="margin: 3px 0; font-size: 24px; line-height: 1.1;">
             Department of Electronics Engineering (VLSI Design and Technology)
           </p>
-          <h3 style="margin: 8px 0; font-size: 18px; font-weight: bold; line-height: 1.2;">
-            I YEAR II SEM RESULT ANALYSIS (2024–2028 BATCH)
+          <h3 style="margin: 15px 0 10px 0; font-size: 28px; font-weight: bold; line-height: 1.2;">
+            STUDENT ACADEMIC PERFORMANCE REPORT
           </h3>
-          <p style="margin: 3px 0; font-size: 16px; font-weight: bold; line-height: 1.1;">
-            CGPA Calculation Upto II Semester
+          <p style="margin: 3px 0; font-size: 22px; font-weight: bold; line-height: 1.1;">
+            Overall CGPA Summary (Semester 1 - 8)
           </p>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+          <p style="margin: 10px 0 0 0; font-size: 16px; color: #000;">
             Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
@@ -647,52 +650,53 @@ const AdminDashboard = () => {
       tempContainer.appendChild(heading);
 
       // Generate complete table dynamically with all data
+      // Styles: Black text, Black borders, Transparent backgrounds
       const tableHtml = `
-        <table style="width: 100%; font-size: 12px; border-collapse: collapse; border: 2px solid #2D3748;">
-          <thead style="position: static; background-color: white; border: 2px solid #2D3748;">
-            <tr style="border: 2px solid #2D3748;">
-              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 50px;">S.No</th>
-              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 80px;">SECTION</th>
-              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">REG NO</th>
-              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 150px;">NAME</th>
-              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum =>
-        `<th colspan="4" style="border: 2px solid #2D3748; background-color: ${semNum % 2 === 0 ? '#f0fff4' : '#ebf8ff'}; font-weight: bold; text-align: center; padding: 4px;">SEM ${semNum}</th>`
+        <table style="width: 100%; font-size: 18px; border-collapse: collapse; border: 2px solid #000000; color: #000000;">
+          <thead style="position: static; background-color: transparent; border: 2px solid #000000;">
+            <tr style="border: 2px solid #000000;">
+              <th rowspan="2" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 8px; width: 60px;">S.No</th>
+              <th rowspan="2" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 8px; width: 100px;">SECTION</th>
+              <th rowspan="2" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 8px; width: 150px;">REG NO</th>
+              <th rowspan="2" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 8px; width: 250px;">NAME</th>
+              ${Array.from({ length: reportMaxSemesters }, (_, i) => i + 1).map(semNum =>
+        `<th colspan="4" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 6px;">SEM ${semNum}</th>`
       ).join('')}
-              <th colspan="3" style="border: 2px solid #2D3748; background-color: '#faf5ff'; font-weight: bold; text-align: center; padding: 4px;">Overall</th>
-              <th rowspan="2" style="border: 2px solid #2D3748; background-color: #EDF2F7; font-weight: bold; text-align: center; padding: 8px; width: 100px;">Signature</th>
+              <th colspan="3" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 6px;">Overall</th>
+              <th rowspan="2" style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 8px; width: 150px;">Signature</th>
             </tr>
-            <tr style="border: 2px solid #2D3748;">
-              ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum =>
-        `<th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">ARREAR COUNT</th>
-                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">TOTAL ARREAR</th>
-                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
-                <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">SGPA</th>`
+            <tr style="border: 2px solid #000000;">
+              ${Array.from({ length: reportMaxSemesters }, (_, i) => i + 1).map(semNum =>
+        `<th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 80px;">ARREAR COUNT</th>
+                <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 80px;">TOTAL ARREAR</th>
+                <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
+                <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 60px;">SGPA</th>`
       ).join('')}
-              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">CGPA</th>
-              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 60px;">TOT</th>
-              <th style="border: 2px solid #2D3748; background-color: #F7FAFC; font-weight: bold; text-align: center; padding: 4px; width: 80px;">Total Arrear</th>
+              <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 80px;">CGPA</th>
+              <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 80px;">TOT</th>
+              <th style="border: 1px solid #000000; background-color: transparent; font-weight: bold; text-align: center; padding: 4px; width: 100px;">Total Arrear</th>
             </tr>
           </thead>
-          <tbody style="border: 2px solid #2D3748;">
+          <tbody style="border: 2px solid #000000;">
             ${freshStudentData.map(student => `
-              <tr style="border: 2px solid #2D3748;">
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.sno}</td>
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.section}</td>
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.registerNo}</td>
-                <td style="border: 1px solid #CBD5E0; padding: 4px; font-size: 10px;">${student.name}</td>
-                ${Array.from({ length: maxSemesters }, (_, i) => i + 1).map(semNum => {
+              <tr style="border: 1px solid #000000;">
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.sno}</td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.section}</td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.registerNo}</td>
+                <td style="border: 1px solid #000000; padding: 6px; font-size: 16px;">${student.name}</td>
+                ${Array.from({ length: reportMaxSemesters }, (_, i) => i + 1).map(semNum => {
         const semData = student[`sem${semNum}`] || { arrearsCount: 0, arrearsTotal: 0, total: 0, sgpa: 0 };
         return `
-                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsCount}</td>
-                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.arrearsTotal}</td>
-                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.total}</td>
-                    <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${semData.sgpa.toFixed(2)}</td>
+                    <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${semData.arrearsCount}</td>
+                    <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${semData.arrearsTotal}</td>
+                    <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${semData.total}</td>
+                    <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${semData.sgpa.toFixed(2)}</td>
                   `;
       }).join('')}
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.cgpa.toFixed(2)}</td>
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.total}</td>
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;">${student.overall.totalArrears}</td>
-                <td style="border: 1px solid #CBD5E0; text-align: center; padding: 4px; font-size: 10px;"></td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.overall.cgpa.toFixed(2)}</td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.overall.total}</td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;">${student.overall.totalArrears}</td>
+                <td style="border: 1px solid #000000; text-align: center; padding: 6px; font-size: 16px;"></td>
               </tr>
             `).join('')}
           </tbody>
@@ -710,8 +714,8 @@ const AdminDashboard = () => {
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        width: 1600, // Match container width
-        windowWidth: 1600, // Simulate desktop viewport
+        width: 3200, // Match updated container width
+        windowWidth: 3200, // Simulate desktop viewport
         logging: false,
         removeContainer: true
       });
