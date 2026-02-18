@@ -13,6 +13,7 @@ const SemesterGrades = () => {
   const [currentSemester, setCurrentSemester] = useState(1);
   const [grades, setGrades] = useState({});
   const [userData, setUserData] = useState(null);
+  const [lockedSemesters, setLockedSemesters] = useState([]);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -23,7 +24,23 @@ const SemesterGrades = () => {
       return;
     }
     setUserData(JSON.parse(savedData));
+    fetchLockedSemesters();
   }, [navigate]);
+
+  const fetchLockedSemesters = async () => {
+    try {
+      const apiEndpoint = import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/api/settings`
+        : '/api/settings';
+      const response = await fetch(apiEndpoint);
+      if (response.ok) {
+        const data = await response.json();
+        setLockedSemesters(data.lockedSemesters || []);
+      }
+    } catch (error) {
+      console.error('Error fetching locked semesters:', error);
+    }
+  };
 
   const calculateSemesterProgress = (semester) => {
     const semSubjects = SEMESTER_SUBJECTS[semester] || [];
@@ -285,6 +302,9 @@ const SemesterGrades = () => {
     <VStack spacing={4} align='stretch'>
       <Heading size='lg' textAlign='center'>
         Enter Grades for Semester {currentSemester}
+        {lockedSemesters.includes(currentSemester) && (
+          <Text fontSize="md" color="red.500" mt={2}>(Locked)</Text>
+        )}
       </Heading>
 
       {/* Simple semester selection */}
@@ -296,11 +316,13 @@ const SemesterGrades = () => {
           return (
             <VStack key={sem} spacing={1}>
               <Button
-                colorScheme={currentSemester === sem ? 'blue' : isCompleted ? 'green' : 'gray'}
+                colorScheme={currentSemester === sem ? 'blue' : lockedSemesters.includes(sem) ? 'red' : isCompleted ? 'green' : 'gray'}
                 onClick={() => setCurrentSemester(sem)}
+                leftIcon={lockedSemesters.includes(sem) ? <span style={{ fontSize: '12px' }}>🔒</span> : null}
               >
                 Semester {sem}
-                {isCompleted && ' ✓'}
+                {isCompleted && !lockedSemesters.includes(sem) && ' ✓'}
+                {lockedSemesters.includes(sem) && ' (Locked)'}
               </Button>
               <Text fontSize='xs' color='gray.600'>
                 {Math.round(progress)}%
@@ -383,6 +405,7 @@ const SemesterGrades = () => {
                       onChange={(e) => handleGradeChange(currentSemester, subject.code, e.target.value)}
                       placeholder='Select grade'
                       size='sm'
+                      isDisabled={lockedSemesters.includes(currentSemester)}
                     >
                       {GRADES.map(grade => (
                         <option key={grade.value} value={grade.value}>
@@ -427,7 +450,7 @@ const SemesterGrades = () => {
           isDisabled={
             !(SEMESTER_SUBJECTS[currentSemester] || []).every(
               subj => grades[`${currentSemester}-${subj.code}`]
-            )
+            ) || lockedSemesters.includes(currentSemester)
           }
           width={{ base: 'full', md: 'auto' }}
           size={{ base: 'md', md: 'md' }}

@@ -48,6 +48,7 @@ const globalStyles = `
 const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lockedSemesters, setLockedSemesters] = useState([]);
   const [sortBy, setSortBy] = useState('registerNo'); // New state for sorting
   const [sortOrder, setSortOrder] = useState('asc'); // New state for sort order
   const toast = useToast();
@@ -93,6 +94,7 @@ const AdminDashboard = () => {
 
     // Initial fetch
     fetchWithMountCheck(false);
+    fetchLockedSemesters();
 
     // Add real-time data refresh for mobile (reduced frequency to prevent issues)
     intervalId = setInterval(() => {
@@ -324,6 +326,60 @@ const AdminDashboard = () => {
     } else {
       setSortBy(field);
       setSortOrder('asc');
+    }
+  };
+
+  const fetchLockedSemesters = async () => {
+    try {
+      const apiEndpoint = import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/api/settings`
+        : '/api/settings';
+      const response = await fetch(apiEndpoint);
+      if (response.ok) {
+        const data = await response.json();
+        setLockedSemesters(data.lockedSemesters || []);
+      }
+    } catch (error) {
+      console.error('Error fetching locked semesters:', error);
+    }
+  };
+
+  const toggleSemesterLock = async (semester) => {
+    const isLocked = lockedSemesters.includes(semester);
+    const endpoint = isLocked ? '/api/settings/unlock' : '/api/settings/lock';
+    const apiBase = import.meta.env.VITE_API_URL || '';
+
+    try {
+      const response = await fetch(`${apiBase}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ semester })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLockedSemesters(data.lockedSemesters || []);
+        toast({
+          title: isLocked ? 'Semester Unlocked' : 'Semester Locked',
+          description: `Semester ${semester} has been ${isLocked ? 'unlocked' : 'locked'}.`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error('Failed to update settings');
+      }
+    } catch (error) {
+      console.error('Error updating semester lock:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update semester lock status',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -940,6 +996,35 @@ const AdminDashboard = () => {
             </Text>
             <Text fontSize={{ base: "xs", md: "sm", lg: "md" }} color="gray.600">Pass Percentage</Text>
           </Box>
+        </Box>
+
+        {/* Semester Locking Controls */}
+        <Box
+          bg='white'
+          p={padding}
+          borderRadius='lg'
+          boxShadow='md'
+          width='full'
+          overflowX='auto'
+          mb={6}
+        >
+          <Heading size='md' mb={4}>Semester Locking Controls</Heading>
+          <Text fontSize='sm' mb={4} color='gray.600'>
+            Lock semesters to prevent students from editing their grades.
+          </Text>
+          <HStack spacing={4} wrap='wrap'>
+            {Array.from({ length: 8 }, (_, i) => i + 1).map(sem => (
+              <Button
+                key={sem}
+                onClick={() => toggleSemesterLock(sem)}
+                colorScheme={lockedSemesters.includes(sem) ? 'red' : 'green'}
+                variant={lockedSemesters.includes(sem) ? 'solid' : 'outline'}
+                size='sm'
+              >
+                Semester {sem} {lockedSemesters.includes(sem) ? '(Locked)' : '(Open)'}
+              </Button>
+            ))}
+          </HStack>
         </Box>
 
         {/* Students Table */}

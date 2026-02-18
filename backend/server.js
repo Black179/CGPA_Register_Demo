@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const Student = require('./models/Student');
+const Settings = require('./models/Settings');
 
 const app = express();
 
@@ -214,6 +215,61 @@ app.delete('/api/admin/students/:registerNo', async (req, res) => {
   } catch (error) {
     console.error('Error in delete endpoint:', error);
     res.status(500).json({ error: 'Failed to delete student: ' + error.message });
+  }
+});
+
+// Settings Routes
+app.get('/api/settings', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+      await settings.save();
+    }
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+app.post('/api/settings/lock', async (req, res) => {
+  try {
+    const { semester } = req.body;
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    if (!settings.lockedSemesters.includes(semester)) {
+      settings.lockedSemesters.push(semester);
+      settings.updatedAt = Date.now();
+      await settings.save();
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error locking semester:', error);
+    res.status(500).json({ error: 'Failed to lock semester' });
+  }
+});
+
+app.post('/api/settings/unlock', async (req, res) => {
+  try {
+    const { semester } = req.body;
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    settings.lockedSemesters = settings.lockedSemesters.filter(s => s !== semester);
+    settings.updatedAt = Date.now();
+    await settings.save();
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error unlocking semester:', error);
+    res.status(500).json({ error: 'Failed to unlock semester' });
   }
 });
 
